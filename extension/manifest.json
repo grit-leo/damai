@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "新品审核智能助理",
+  "description": "在现有审批页面打开 AI 侧栏，辅助采销完成新品价格、费率和促销利润审核。",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "scripting", "storage", "clipboardWrite"],
+  "host_permissions": [
+    "http://127.0.0.1:*/*",
+    "http://localhost:*/*"
+  ],
+  "action": {
+    "default_title": "打开新品审核智能助理"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/assistant-avatar.png", "assets/damai-corgi-avatar.png"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

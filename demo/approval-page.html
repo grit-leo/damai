@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>新品审批详情 Demo</title>
+    <style>
+      body {
+        margin: 0;
+        background: #f3f4f6;
+        color: #111827;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+
+      header {
+        height: 56px;
+        padding: 0 28px;
+        display: flex;
+        align-items: center;
+        background: #ffffff;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 700;
+      }
+
+      main {
+        max-width: 1080px;
+        margin: 28px auto;
+        padding: 0 24px;
+      }
+
+      .card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+
+      h1 {
+        margin: 0 0 18px;
+        font-size: 22px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .field {
+        border-bottom: 1px solid #f3f4f6;
+        padding-bottom: 10px;
+      }
+
+      .label {
+        margin: 0 0 4px;
+        color: #6b7280;
+        font-size: 13px;
+      }
+
+      .value {
+        margin: 0;
+        color: #111827;
+        font-weight: 700;
+      }
+
+      .product {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .image {
+        width: 120px;
+        height: 120px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: linear-gradient(135deg, #f97316, #facc15);
+        display: grid;
+        place-items: center;
+        color: #ffffff;
+        font-weight: 700;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <header>采销工作台 / 商品审批 / 新品详情</header>
+    <main>
+      <section class="card">
+        <h1>新品审批详情</h1>
+        <div class="product">
+          <div class="image" role="img" aria-label="宠物粮商品主图">商品主图</div>
+          <div class="grid">
+            <div class="field">
+              <p class="label">商品名称</p>
+              <p class="value">喜崽 新品上新 喜崽鲜泥混合价猫餐盒湿粮猫罐头主食猫头拌饭 1kg</p>
+            </div>
+            <div class="field">
+              <p class="label">商品编码</p>
+              <p class="value">100283434137</p>
+            </div>
+            <div class="field">
+              <p class="label">品牌</p>
+              <p class="value">喜崽</p>
+            </div>
+            <div class="field">
+              <p class="label">类目</p>
+              <p class="value">宠物生活 / 猫粮 / 膨化粮</p>
+            </div>
+            <div class="field">
+              <p class="label">规格</p>
+              <p class="value">1kg</p>
+            </div>
+            <div class="field">
+              <p class="label">供应商</p>
+              <p class="value">示例品牌供应商</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="grid">
+          <div class="field">
+            <p class="label">采购价</p>
+            <p class="value">30.00</p>
+          </div>
+          <div class="field">
+            <p class="label">京东价</p>
+            <p class="value">60.92</p>
+          </div>
+          <div class="field">
+            <p class="label">预估毛利率</p>
+            <p class="value">70%</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

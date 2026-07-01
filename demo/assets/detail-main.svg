@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">
+  <rect width="900" height="900" fill="#f97316"/>
+  <rect x="70" y="70" width="760" height="760" rx="32" fill="#fff7ed"/>
+  <text x="450" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="64" font-weight="700" fill="#9a3412">喜崽官方旗舰店</text>
+  <text x="450" y="405" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" fill="#1f2937">鲜泥混合价猫餐盒</text>
+  <text x="450" y="520" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" fill="#1f2937">规格 1kg</text>
+  <text x="450" y="660" text-anchor="middle" font-family="Arial, sans-serif" font-size="56" font-weight="700" fill="#dc2626">券后价 ¥27.99</text>
+</svg>

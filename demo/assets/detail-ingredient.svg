@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <rect width="900" height="1200" fill="#f8fafc"/>
+  <text x="80" y="120" font-family="Arial, sans-serif" font-size="56" font-weight="700" fill="#111827">配方详情图</text>
+  <rect x="80" y="180" width="740" height="820" rx="24" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="130" y="280" font-family="Arial, sans-serif" font-size="38" fill="#111827">主要原料</text>
+  <text x="130" y="360" font-family="Arial, sans-serif" font-size="32" fill="#334155">鸡肉、鱼肉、蛋黄粉、牛磺酸</text>
+  <text x="130" y="470" font-family="Arial, sans-serif" font-size="38" fill="#111827">营养指标</text>
+  <text x="130" y="550" font-family="Arial, sans-serif" font-size="32" fill="#334155">粗蛋白 32%，粗脂肪 12%</text>
+  <text x="130" y="660" font-family="Arial, sans-serif" font-size="38" fill="#111827">成本分析参考</text>
+  <text x="130" y="740" font-family="Arial, sans-serif" font-size="32" fill="#334155">原料、包装、加工、损耗</text>
+  <text x="130" y="850" font-family="Arial, sans-serif" font-size="32" fill="#334155">适合交给视觉模型识别 BOM 信息</text>
+</svg>
