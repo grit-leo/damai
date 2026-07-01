@@ -166,10 +166,16 @@ async function runBrowserTests() {
     await assertField(page, "skuId", "100283434137");
     await assertField(page, "purchasePrice", "30");
     await assertField(page, "jdPrice", "60.92");
+    await assertLayoutShift(page);
+    await page.locator("[data-pa-pickup-card]", { hasText: "已拾取" }).waitFor();
+    assert.equal(
+      await page.evaluate(() => document.body.innerText.includes("价格爬取服务") || document.body.innerText.includes("详情图采集服务")),
+      false,
+      "technical service endpoints should not be visible in the assistant UI"
+    );
 
     await page.locator('[data-pa-field="officialUrl"]').fill(`${new URL(url).origin}/demo/official-store-page.html`);
-    await page.locator('[data-pa-field="crawlerEndpoint"]').fill(`${crawler.url}/api/official-price`);
-    await page.locator('[data-pa-field="detailImageEndpoint"]').fill(`${crawler.url}/api/detail-images`);
+    await setCrawlerEndpoints(page, crawler.url);
     await page.locator('[data-pa-action="crawl-detail-images"]').click();
     await page.locator("[data-pa-crawl-status]", { hasText: "已采集" }).waitFor();
     const imageTableText = await page.locator("[data-pa-image-list]").innerText();
@@ -204,9 +210,9 @@ async function runBrowserTests() {
     await commandPage.evaluate(() => window.PurchaseAssistantUI.open());
 
     await commandPage.locator("#purchase-assistant-root:not(.pa-hidden)").waitFor();
+    await assertLayoutShift(commandPage);
     await commandPage.locator('[data-pa-field="officialUrl"]').fill(`${new URL(url).origin}/demo/official-store-page.html`);
-    await commandPage.locator('[data-pa-field="crawlerEndpoint"]').fill(`${crawler.url}/api/official-price`);
-    await commandPage.locator('[data-pa-field="detailImageEndpoint"]').fill(`${crawler.url}/api/detail-images`);
+    await setCrawlerEndpoints(commandPage, crawler.url);
     await commandPage.locator('[data-pa-field="lowPrice"]').fill("14.2");
     await commandPage.locator('[data-pa-field="bomLow"]').fill("19");
     await commandPage.locator('[data-pa-field="bomHigh"]').fill("21");
@@ -237,6 +243,33 @@ async function assertField(page, name, expected) {
   } else {
     assert.equal(value, expected, `field ${name} should equal ${expected}`);
   }
+}
+
+async function setCrawlerEndpoints(page, crawlerUrl) {
+  await page.evaluate((baseUrl) => {
+    document.querySelector('[data-pa-field="crawlerEndpoint"]').value = `${baseUrl}/api/official-price`;
+    document.querySelector('[data-pa-field="detailImageEndpoint"]').value = `${baseUrl}/api/detail-images`;
+  }, crawlerUrl);
+}
+
+async function assertLayoutShift(page) {
+  const layout = await page.evaluate(() => {
+    const hostRight = Math.max(
+      ...Array.from(document.body.children)
+      .filter((child) => child.id !== "purchase-assistant-root")
+        .map((child) => child.getBoundingClientRect().right)
+    );
+    const panelLeft = document.querySelector("#purchase-assistant-root").getBoundingClientRect().left;
+    return {
+      hasOpenClass: document.documentElement.classList.contains("pa-layout-shift"),
+      reservedWidth: window.innerWidth - panelLeft,
+      hostRight,
+      panelLeft
+    };
+  });
+  assert.equal(layout.hasOpenClass, true, "opening assistant should mark page as shifted");
+  assert.ok(layout.reservedWidth >= 460, "opening assistant should reserve right-side workspace");
+  assert.ok(layout.hostRight <= layout.panelLeft + 1, "assistant should not cover the host page content");
 }
 
 (async () => {

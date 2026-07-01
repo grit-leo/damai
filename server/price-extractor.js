@@ -179,7 +179,7 @@ function platformFromUrl(url) {
     if (/douyin|jinritemai/.test(hostname)) return "抖音";
     if (/jd\.com/.test(hostname)) return "京东";
     if (/pinduoduo|yangkeduo/.test(hostname)) return "拼多多";
-    if (/localhost|127\.0\.0\.1/.test(hostname)) return "演示官旗";
+    if (/localhost|127\.0\.0\.1/.test(hostname)) return "官旗";
     return hostname;
   } catch {
     return "未知平台";

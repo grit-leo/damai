@@ -3,6 +3,25 @@
   box-sizing: border-box;
 }
 
+:root.pa-layout-shift {
+  --pa-panel-width: 468px;
+  overflow-x: hidden;
+}
+
+@media (min-width: 700px) {
+  :root.pa-layout-shift body > :not(#purchase-assistant-root) {
+    width: calc(100vw - var(--pa-panel-width)) !important;
+    max-width: calc(100vw - var(--pa-panel-width)) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+    transition:
+      width 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      max-width 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      margin 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
 #purchase-assistant-root {
   position: fixed;
   inset: 0 0 0 auto;
@@ -24,7 +43,7 @@
   margin-left: auto;
   background: #f5f7f8;
   border-left: 1px solid #cfd8dc;
-  box-shadow: -18px 0 42px rgba(20, 31, 35, 0.18);
+  box-shadow: -8px 0 24px rgba(20, 31, 35, 0.12);
   display: flex;
   flex-direction: column;
   pointer-events: auto;
@@ -161,6 +180,110 @@
   color: #334248;
   font-size: 13px;
   line-height: 1.5;
+}
+
+#purchase-assistant-root .pa-pickup-card {
+  position: relative;
+  overflow: hidden;
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(238, 248, 245, 0.96), rgba(255, 248, 232, 0.96)),
+    #ffffff;
+  border: 1px solid #cce8e2;
+}
+
+#purchase-assistant-root .pa-pickup-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(15, 159, 141, 0.18), transparent);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+#purchase-assistant-root .pa-pickup-card.is-scanning::after {
+  animation: pa-scan-sweep 900ms ease-out;
+}
+
+#purchase-assistant-root .pa-pickup-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+#purchase-assistant-root .pa-scan-core {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #0f766e;
+  box-shadow: 0 0 0 6px rgba(15, 118, 110, 0.12);
+  flex: 0 0 auto;
+}
+
+#purchase-assistant-root .pa-pickup-card.is-scanning .pa-scan-core {
+  animation: pa-scan-pulse 900ms ease-in-out infinite;
+}
+
+#purchase-assistant-root .pa-pickup-head strong {
+  display: block;
+  color: #11181c;
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 850;
+}
+
+#purchase-assistant-root .pa-pickup-head small {
+  display: block;
+  margin-top: 3px;
+  color: #536168;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+#purchase-assistant-root .pa-pickup-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+#purchase-assistant-root .pa-pickup-list div {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(204, 232, 226, 0.88);
+}
+
+#purchase-assistant-root .pa-pickup-list div.is-picked {
+  border-color: #9bd8cc;
+  background: #ffffff;
+}
+
+#purchase-assistant-root .pa-pickup-list span {
+  display: block;
+  margin-bottom: 4px;
+  color: #627179;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+#purchase-assistant-root .pa-pickup-list strong {
+  display: block;
+  min-width: 0;
+  color: #11181c;
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 850;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #purchase-assistant-root .pa-agent-status {
@@ -912,6 +1035,29 @@
   pointer-events: none;
 }
 
+@keyframes pa-scan-sweep {
+  from {
+    transform: translateX(-120%);
+  }
+
+  to {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes pa-scan-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(15, 118, 110, 0.12);
+  }
+
+  50% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 10px rgba(15, 118, 110, 0.08);
+  }
+}
+
 @media (max-width: 520px) {
   #purchase-assistant-root {
     width: 100vw;
@@ -925,6 +1071,7 @@
   #purchase-assistant-root .pa-grid,
   #purchase-assistant-root .pa-actions,
   #purchase-assistant-root .pa-metric-grid,
+  #purchase-assistant-root .pa-pickup-list,
   #purchase-assistant-root .pa-decision-kpis {
     grid-template-columns: 1fr;
   }

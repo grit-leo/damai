@@ -9,6 +9,14 @@
     lastOfficialPrice: null,
     detailImages: []
   };
+  const OFFICIAL_PRICE_PATH = "/api/official-price";
+  const DETAIL_IMAGE_PATH = "/api/detail-images";
+  const PICKUP_FIELDS = [
+    ["productName", "商品名"],
+    ["skuId", "商品编码"],
+    ["purchasePrice", "采购价"],
+    ["jdPrice", "京东价"]
+  ];
 
   function formatMoney(value) {
     return analyzer.formatMoney(value);
@@ -69,7 +77,34 @@
                   <span class="pa-pill" data-pa-completeness>未识别</span>
                 </div>
                 <p class="pa-hero-summary" data-pa-assistant-summary>我会先读单，再补价格证据，最后给出可复制的审核意见。</p>
-                <p class="pa-muted" data-pa-page-url></p>
+                <p class="pa-muted" data-pa-page-url>当前审批页已连接</p>
+              </div>
+            </div>
+            <div class="pa-pickup-card" data-pa-pickup-card>
+              <div class="pa-pickup-head">
+                <span class="pa-scan-core"></span>
+                <div>
+                  <strong>正在拾取新品信息</strong>
+                  <small data-pa-pickup-count>等待读取审批页</small>
+                </div>
+              </div>
+              <div class="pa-pickup-list">
+                <div data-pa-pickup-item="productName">
+                  <span>商品名</span>
+                  <strong data-pa-pickup-value>待识别</strong>
+                </div>
+                <div data-pa-pickup-item="skuId">
+                  <span>商品编码</span>
+                  <strong data-pa-pickup-value>待识别</strong>
+                </div>
+                <div data-pa-pickup-item="purchasePrice">
+                  <span>采购价</span>
+                  <strong data-pa-pickup-value>待识别</strong>
+                </div>
+                <div data-pa-pickup-item="jdPrice">
+                  <span>京东价</span>
+                  <strong data-pa-pickup-value>待识别</strong>
+                </div>
               </div>
             </div>
             <div class="pa-agent-status">
@@ -168,10 +203,10 @@
               </div>
               <div class="pa-slot-grid">
                 ${fieldHtml("officialUrl", "官旗商品链接", "text", true, "可粘贴天猫/抖音/京东官旗商品页链接")}
-                ${fieldHtml("officialPrice", "官旗真实到手价", "number", false, "例如 27.99")}
-                ${fieldHtml("lowPrice", "全网低价", "number", false, "例如 14.2")}
-                ${fieldHtml("bomLow", "BOM 成本下沿", "number", false, "例如 19")}
-                ${fieldHtml("bomHigh", "BOM 成本上沿", "number", false, "例如 21")}
+                ${fieldHtml("officialPrice", "官旗真实到手价", "number", false, "填写或由麦总获取")}
+                ${fieldHtml("lowPrice", "全网低价", "number", false, "填写低价证据")}
+                ${fieldHtml("bomLow", "BOM 成本下沿", "number", false, "填写成本下沿")}
+                ${fieldHtml("bomHigh", "BOM 成本上沿", "number", false, "填写成本上沿")}
               </div>
               <div class="pa-mini-status-grid">
                 <div><span>官旗价</span><strong data-pa-price-state>待获取</strong></div>
@@ -236,11 +271,11 @@
                 ${fieldHtml("category", "类目")}
                 ${fieldHtml("spec", "规格")}
                 ${fieldHtml("supplier", "供应商", "text", true)}
-                ${fieldHtml("purchasePrice", "采购价", "number", false, "例如 30")}
-                ${fieldHtml("jdPrice", "京东价", "number", false, "例如 59.9")}
-                ${fieldHtml("crawlerEndpoint", "价格爬取服务", "text", true, "http://127.0.0.1:8787/api/official-price")}
-                ${fieldHtml("detailImageEndpoint", "详情图采集服务", "text", true, "http://127.0.0.1:8787/api/detail-images")}
+                ${fieldHtml("purchasePrice", "采购价", "number", false, "从审批页读取")}
+                ${fieldHtml("jdPrice", "京东价", "number", false, "从审批页读取")}
               </div>
+              <input data-pa-field="crawlerEndpoint" type="hidden">
+              <input data-pa-field="detailImageEndpoint" type="hidden">
               <div data-pa-image-list></div>
             </section>
           </div>
@@ -270,6 +305,61 @@
   function agentStatus(root, message) {
     setText(root, "[data-pa-agent-status]", message);
     setText(root, "[data-pa-command-log]", message);
+  }
+
+  function truncateValue(value, maxLength = 34) {
+    const text = value === null || value === undefined ? "" : String(value).trim();
+    if (!text) return "待识别";
+    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+  }
+
+  function defaultServiceEndpoint(path) {
+    const { protocol, hostname } = window.location;
+    if (!/^(localhost|127\.0\.0\.1)$/.test(hostname)) return "";
+    return `${protocol}//${hostname}:8787${path}`;
+  }
+
+  function renderPickup(root, data) {
+    const card = root.querySelector("[data-pa-pickup-card]");
+    if (!card) return;
+
+    let picked = 0;
+    PICKUP_FIELDS.forEach(([key]) => {
+      const item = root.querySelector(`[data-pa-pickup-item="${key}"]`);
+      if (!item) return;
+      const value = data[key];
+      const hasValue = value !== null && value !== undefined && String(value).trim() !== "";
+      item.classList.toggle("is-picked", hasValue);
+      const displayValue = typeof value === "number" ? formatMoney(value) : truncateValue(value);
+      setText(item, "[data-pa-pickup-value]", displayValue);
+      if (hasValue) picked += 1;
+    });
+
+    setText(root, "[data-pa-pickup-count]", `已拾取 ${picked}/${PICKUP_FIELDS.length} 个关键字段`);
+    card.classList.remove("is-complete");
+    card.classList.add("is-scanning");
+    window.setTimeout(() => {
+      if (!card.isConnected) return;
+      card.classList.remove("is-scanning");
+      card.classList.add("is-complete");
+    }, 700);
+  }
+
+  function currentPanelWidth(root) {
+    if (window.innerWidth <= 520) return window.innerWidth;
+    return Math.min(468, Math.max(0, window.innerWidth - 16));
+  }
+
+  function setPageShift(root, enabled) {
+    const doc = document.documentElement;
+    if (enabled && window.innerWidth >= 700) {
+      const panelWidth = currentPanelWidth(root);
+      doc.style.setProperty("--pa-panel-width", `${panelWidth}px`);
+      doc.classList.add("pa-layout-shift");
+    } else {
+      doc.classList.remove("pa-layout-shift");
+      doc.style.removeProperty("--pa-panel-width");
+    }
   }
 
   function readForm(root) {
@@ -303,19 +393,20 @@
     setField(root, "adRate", "0");
     setField(root, "targetProfitRate", "12");
     if (!getField(root, "crawlerEndpoint").value) {
-      setField(root, "crawlerEndpoint", "http://127.0.0.1:8787/api/official-price");
+      setField(root, "crawlerEndpoint", defaultServiceEndpoint(OFFICIAL_PRICE_PATH));
     }
     if (!getField(root, "detailImageEndpoint").value) {
-      setField(root, "detailImageEndpoint", "http://127.0.0.1:8787/api/detail-images");
+      setField(root, "detailImageEndpoint", defaultServiceEndpoint(DETAIL_IMAGE_PATH));
     }
 
     root.querySelector("[data-pa-completeness]").textContent = `识别完整度 ${data.completeness}%`;
-    root.querySelector("[data-pa-page-url]").textContent = data.pageUrl || "当前页面";
+    root.querySelector("[data-pa-page-url]").textContent = "当前审批页已连接";
     setText(root, "[data-pa-brief-purchase]", formatMoney(data.purchasePrice));
     setText(root, "[data-pa-brief-jd]", formatMoney(data.jdPrice));
     setText(root, "[data-pa-assistant-summary]", `已识别 ${data.productName || "当前商品"}，我会重点检查采购价、官旗价和促销贡利风险。`);
     agentStatus(root, "读单完成，下一步补价格证据。");
     setText(root, "[data-pa-read-state]", `完整度 ${data.completeness}%`);
+    renderPickup(root, data);
   }
 
   function riskClass(level) {
@@ -439,7 +530,8 @@
 
   async function crawlOfficialPrice(root) {
     const form = readForm(root);
-    const endpoint = form.crawlerEndpoint || "http://127.0.0.1:8787/api/official-price";
+    const endpoint = form.crawlerEndpoint || defaultServiceEndpoint(OFFICIAL_PRICE_PATH);
+    if (!endpoint) throw new Error("价格采集能力未连接，请联系管理员配置。");
     crawlStatus(root, "正在爬取官旗到手价...");
 
     const response = await fetch(endpoint, {
@@ -516,7 +608,8 @@
 
   async function crawlDetailImages(root) {
     const form = readForm(root);
-    const endpoint = form.detailImageEndpoint || "http://127.0.0.1:8787/api/detail-images";
+    const endpoint = form.detailImageEndpoint || defaultServiceEndpoint(DETAIL_IMAGE_PATH);
+    if (!endpoint) throw new Error("详情图采集能力未连接，请联系管理员配置。");
     crawlStatus(root, "正在采集商品详情图...");
 
     const response = await fetch(endpoint, {
@@ -755,12 +848,14 @@
   function open() {
     const root = createRoot();
     root.classList.remove("pa-hidden");
+    setPageShift(root, true);
     if (!state.extracted) fillFromPage(root);
   }
 
   function close() {
     const root = createRoot();
     root.classList.add("pa-hidden");
+    setPageShift(root, false);
   }
 
   function toggle() {
@@ -778,4 +873,9 @@
     toggle,
     refresh: () => fillFromPage(createRoot())
   };
+
+  window.addEventListener("resize", () => {
+    const root = document.getElementById("purchase-assistant-root");
+    if (root && !root.classList.contains("pa-hidden")) setPageShift(root, true);
+  });
 })();
