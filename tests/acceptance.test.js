@@ -195,6 +195,34 @@ async function runBrowserTests() {
     const copied = await page.evaluate(() => window.__purchaseAssistantCopiedText);
     assertIncludes(copied, "审核建议", "copy should include review heading");
     assertIncludes(copied, "建议采购价：20.57 元", "copy should include suggested purchase price");
+
+    const commandPage = await browser.newPage();
+    await commandPage.goto(url, { waitUntil: "domcontentloaded" });
+    await commandPage.addStyleTag({ path: path.join(workspace, "extension/content/sidebar.css") });
+    await commandPage.addScriptTag({ path: path.join(workspace, "extension/shared/analyzer.js") });
+    await commandPage.addScriptTag({ path: path.join(workspace, "extension/content/content.js") });
+    await commandPage.evaluate(() => window.PurchaseAssistantUI.open());
+
+    await commandPage.locator("#purchase-assistant-root:not(.pa-hidden)").waitFor();
+    await commandPage.locator('[data-pa-field="officialUrl"]').fill(`${new URL(url).origin}/demo/official-store-page.html`);
+    await commandPage.locator('[data-pa-field="crawlerEndpoint"]').fill(`${crawler.url}/api/official-price`);
+    await commandPage.locator('[data-pa-field="detailImageEndpoint"]').fill(`${crawler.url}/api/detail-images`);
+    await commandPage.locator('[data-pa-field="lowPrice"]').fill("14.2");
+    await commandPage.locator('[data-pa-field="bomLow"]').fill("19");
+    await commandPage.locator('[data-pa-field="bomHigh"]').fill("21");
+    await commandPage.locator("[data-pa-command-input]").fill("帮我完整审核这单");
+    await commandPage.locator('[data-pa-action="run-command"]').click();
+
+    await commandPage.locator('[data-pa-risk]', { hasText: "高风险" }).waitFor();
+    await commandPage.waitForFunction(() => document.querySelector('[data-pa-field="officialPrice"]')?.value === "27.99");
+    const commandResultText = await commandPage.locator("[data-pa-result]").innerText();
+    assertIncludes(commandResultText, "建议驳回", "natural language command should generate review result");
+    assertIncludes(commandResultText, "20.57 元", "natural language command should calculate suggested purchase price");
+    const decisionSummary = await commandPage.locator("[data-pa-decision-summary]").innerText();
+    assertIncludes(decisionSummary, "建议驳回", "agent should show an immediate decision summary");
+    assertIncludes(decisionSummary, "20.57 元", "decision summary should show suggested purchase price");
+    assertIncludes(await commandPage.locator("[data-pa-command-log]").innerText(), "高风险", "agent command log should show final risk");
+    assertIncludes(await commandPage.locator("[data-pa-image-state]").innerText(), "3 张", "agent command should collect detail images");
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));

@@ -72,6 +72,10 @@
                 <p class="pa-muted" data-pa-page-url></p>
               </div>
             </div>
+            <div class="pa-agent-status">
+              <span class="pa-live-dot"></span>
+              <span data-pa-agent-status>已接管当前审批单，等待补齐价格证据。</span>
+            </div>
             <div class="pa-hero-metrics">
               <div>
                 <span>采购价</span>
@@ -86,17 +90,63 @@
                 <strong data-pa-brief-official>待补</strong>
               </div>
             </div>
-            <div class="pa-task-strip">
-              <span class="pa-task is-active">读单</span>
-              <span class="pa-task">补证据</span>
-              <span class="pa-task">算利润</span>
-              <span class="pa-task">写意见</span>
+            <div class="pa-agent-plan">
+              <div class="pa-plan-step is-done">
+                <span>01</span>
+                <strong>读单完成</strong>
+                <small data-pa-read-state>已识别基础字段</small>
+              </div>
+              <div class="pa-plan-step is-active">
+                <span>02</span>
+                <strong>补证据</strong>
+                <small data-pa-evidence-state>等待官旗价和低价</small>
+              </div>
+              <div class="pa-plan-step">
+                <span>03</span>
+                <strong>出意见</strong>
+                <small data-pa-result-state>待生成审核结论</small>
+              </div>
             </div>
             <div class="pa-command-grid">
               <button data-pa-action="refresh">重新读单</button>
               <button data-pa-action="crawl-detail-images">采集详情图</button>
               <button data-pa-action="crawl-official-price">查询官旗价</button>
               <button class="pa-primary" data-pa-action="analyze">生成审核意见</button>
+            </div>
+            <div class="pa-command-box">
+              <div class="pa-command-input-row">
+                <input data-pa-command-input type="text" placeholder="对麦总说：帮我完整审核这单">
+                <button class="pa-command-send" data-pa-action="run-command">执行</button>
+              </div>
+              <div class="pa-command-chips">
+                <button data-pa-action="quick-command" data-pa-command="帮我完整审核这单">完整审核</button>
+                <button data-pa-action="quick-command" data-pa-command="先查官旗价">查官旗价</button>
+                <button data-pa-action="quick-command" data-pa-command="采集详情图证据">采详情图</button>
+              </div>
+              <p class="pa-command-log" data-pa-command-log>麦总等待指令。</p>
+            </div>
+            <div class="pa-decision-summary" data-pa-decision-summary hidden>
+              <div class="pa-decision-head">
+                <div>
+                  <span>麦总结论</span>
+                  <strong data-pa-decision-title>待生成</strong>
+                </div>
+                <button data-pa-action="copy-decision" title="复制审核意见">复制</button>
+              </div>
+              <div class="pa-decision-kpis">
+                <div>
+                  <span>风险</span>
+                  <strong data-pa-decision-risk>--</strong>
+                </div>
+                <div>
+                  <span>建议采购价</span>
+                  <strong data-pa-decision-price>--</strong>
+                </div>
+                <div>
+                  <span>风险分</span>
+                  <strong data-pa-decision-score>--</strong>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -106,25 +156,27 @@
                 <img src="${assistantAvatarUrl}" alt="">
               </div>
               <div class="pa-message-bubble">
-                <h3 class="pa-section-title">我先把审批单整理成审核数据</h3>
-                <p class="pa-muted">字段有误可以直接改，后续判断会按这里的数据重新计算。</p>
+                <h3 class="pa-section-title">下一步我需要关键证据</h3>
+                <p class="pa-muted" data-pa-crawl-status>优先补官旗到手价、全网低价和 BOM 区间。证据越完整，我给出的降采建议越可靠。</p>
               </div>
             </section>
 
-            <section class="pa-work-card pa-intake">
+            <section class="pa-work-card pa-focus-card">
               <div class="pa-card-head">
-                <h3 class="pa-section-title">审批单数据</h3>
-                <span class="pa-section-hint">识别结果</span>
+                <h3 class="pa-section-title">证据槽</h3>
+                <span class="pa-section-hint">先补这里</span>
               </div>
-              <div class="pa-grid">
-                ${fieldHtml("productName", "商品名称", "textarea", true)}
-                ${fieldHtml("skuId", "商品编码 / 审批单 ID")}
-                ${fieldHtml("brand", "品牌")}
-                ${fieldHtml("category", "类目")}
-                ${fieldHtml("spec", "规格")}
-                ${fieldHtml("supplier", "供应商", "text", true)}
-                ${fieldHtml("purchasePrice", "采购价", "number", false, "例如 30")}
-                ${fieldHtml("jdPrice", "京东价", "number", false, "例如 59.9")}
+              <div class="pa-slot-grid">
+                ${fieldHtml("officialUrl", "官旗商品链接", "text", true, "可粘贴天猫/抖音/京东官旗商品页链接")}
+                ${fieldHtml("officialPrice", "官旗真实到手价", "number", false, "例如 27.99")}
+                ${fieldHtml("lowPrice", "全网低价", "number", false, "例如 14.2")}
+                ${fieldHtml("bomLow", "BOM 成本下沿", "number", false, "例如 19")}
+                ${fieldHtml("bomHigh", "BOM 成本上沿", "number", false, "例如 21")}
+              </div>
+              <div class="pa-mini-status-grid">
+                <div><span>官旗价</span><strong data-pa-price-state>待获取</strong></div>
+                <div><span>详情图</span><strong data-pa-image-state>待采集</strong></div>
+                <div><span>BOM</span><strong data-pa-bom-state>待补充</strong></div>
               </div>
             </section>
 
@@ -133,26 +185,9 @@
                 <img src="${assistantAvatarUrl}" alt="">
               </div>
               <div class="pa-message-bubble">
-                <h3 class="pa-section-title">我还需要价格证据和测算口径</h3>
-                <p class="pa-muted" data-pa-crawl-status>把官旗链接交给我，我会补充到手价和详情图证据。</p>
+                <h3 class="pa-section-title">我会按这套口径测算</h3>
+                <p class="pa-muted">默认采用可控费率 12%、不可控费率 2.5%、目标贡利率 12%。你可以按业务口径覆盖。</p>
               </div>
-            </section>
-
-            <section class="pa-work-card">
-              <div class="pa-card-head">
-                <h3 class="pa-section-title">证据输入</h3>
-                <span class="pa-section-hint">官旗价、低价、BOM</span>
-              </div>
-              <div class="pa-grid">
-                ${fieldHtml("officialUrl", "官旗商品链接", "text", true, "可粘贴天猫/抖音/京东官旗商品页链接")}
-                ${fieldHtml("officialPrice", "官旗真实到手价", "number", false, "例如 27.99")}
-                ${fieldHtml("lowPrice", "全网低价", "number", false, "例如 14.2")}
-                ${fieldHtml("bomLow", "BOM 成本下沿", "number", false, "例如 19")}
-                ${fieldHtml("bomHigh", "BOM 成本上沿", "number", false, "例如 21")}
-                ${fieldHtml("crawlerEndpoint", "价格爬取服务", "text", true, "http://127.0.0.1:8787/api/official-price")}
-                ${fieldHtml("detailImageEndpoint", "详情图采集服务", "text", true, "http://127.0.0.1:8787/api/detail-images")}
-              </div>
-              <div data-pa-image-list></div>
             </section>
 
             <section class="pa-work-card">
@@ -188,6 +223,26 @@
                 </div>
               </div>
             </section>
+
+            <section class="pa-work-card pa-detail-card">
+              <div class="pa-card-head">
+                <h3 class="pa-section-title">数据明细</h3>
+                <span class="pa-section-hint">必要时再改</span>
+              </div>
+              <div class="pa-grid">
+                ${fieldHtml("productName", "商品名称", "textarea", true)}
+                ${fieldHtml("skuId", "商品编码 / 审批单 ID")}
+                ${fieldHtml("brand", "品牌")}
+                ${fieldHtml("category", "类目")}
+                ${fieldHtml("spec", "规格")}
+                ${fieldHtml("supplier", "供应商", "text", true)}
+                ${fieldHtml("purchasePrice", "采购价", "number", false, "例如 30")}
+                ${fieldHtml("jdPrice", "京东价", "number", false, "例如 59.9")}
+                ${fieldHtml("crawlerEndpoint", "价格爬取服务", "text", true, "http://127.0.0.1:8787/api/official-price")}
+                ${fieldHtml("detailImageEndpoint", "详情图采集服务", "text", true, "http://127.0.0.1:8787/api/detail-images")}
+              </div>
+              <div data-pa-image-list></div>
+            </section>
           </div>
         </main>
       </aside>
@@ -210,6 +265,11 @@
   function setText(root, selector, value) {
     const node = root.querySelector(selector);
     if (node) node.textContent = value;
+  }
+
+  function agentStatus(root, message) {
+    setText(root, "[data-pa-agent-status]", message);
+    setText(root, "[data-pa-command-log]", message);
   }
 
   function readForm(root) {
@@ -254,6 +314,8 @@
     setText(root, "[data-pa-brief-purchase]", formatMoney(data.purchasePrice));
     setText(root, "[data-pa-brief-jd]", formatMoney(data.jdPrice));
     setText(root, "[data-pa-assistant-summary]", `已识别 ${data.productName || "当前商品"}，我会重点检查采购价、官旗价和促销贡利风险。`);
+    agentStatus(root, "读单完成，下一步补价格证据。");
+    setText(root, "[data-pa-read-state]", `完整度 ${data.completeness}%`);
   }
 
   function riskClass(level) {
@@ -267,6 +329,14 @@
     risk.className = riskClass(result.riskLevel);
     risk.textContent = `${result.riskLevel}风险`;
     setText(root, "[data-pa-assistant-summary]", `审核完成：${result.riskLevel}风险，建议采购价 ${formatMoney(result.suggestedPurchasePrice)}。`);
+    agentStatus(root, `审核完成，结论为${result.riskLevel}风险。`);
+    setText(root, "[data-pa-result-state]", `${result.riskLevel}风险 / ${formatMoney(result.suggestedPurchasePrice)}`);
+    const decisionSummary = root.querySelector("[data-pa-decision-summary]");
+    if (decisionSummary) decisionSummary.hidden = false;
+    setText(root, "[data-pa-decision-title]", result.recommendation);
+    setText(root, "[data-pa-decision-risk]", `${result.riskLevel}风险`);
+    setText(root, "[data-pa-decision-price]", formatMoney(result.suggestedPurchasePrice));
+    setText(root, "[data-pa-decision-score]", String(result.riskScore));
 
     const scenarioRows = result.scenarios
       .map(
@@ -396,6 +466,9 @@
     if (!getField(root, "dailyPrice").value) setField(root, "dailyPrice", best.finalPrice);
     if (!getField(root, "officialUrl").value && best.url) setField(root, "officialUrl", best.url);
     setText(root, "[data-pa-brief-official]", formatMoney(best.finalPrice));
+    setText(root, "[data-pa-price-state]", `${formatMoney(best.finalPrice)} / 置信度 ${best.confidence}`);
+    setText(root, "[data-pa-evidence-state]", "官旗价已获取，继续补低价/BOM");
+    agentStatus(root, "官旗价已入库，可以继续生成审核意见。");
 
     crawlStatus(
       root,
@@ -466,7 +539,90 @@
 
     state.detailImages = payload.images;
     renderImageList(root);
+    setText(root, "[data-pa-image-state]", `${payload.images.length} 张`);
+    setText(root, "[data-pa-evidence-state]", "详情图已采集，等待价格证据");
+    agentStatus(root, "详情图证据已采集。");
     crawlStatus(root, `已采集 ${payload.images.length} 张详情图，可交给视觉模型分析。`);
+  }
+
+  function hasValue(root, name) {
+    return Boolean(getField(root, name)?.value.trim());
+  }
+
+  function refreshEvidenceStates(root) {
+    const hasBom = hasValue(root, "bomLow") && hasValue(root, "bomHigh");
+    setText(root, "[data-pa-bom-state]", hasBom ? "已补充" : "待补充");
+  }
+
+  function setCommand(root, value) {
+    const input = root.querySelector("[data-pa-command-input]");
+    if (input) input.value = value;
+  }
+
+  async function runReviewAgent(root) {
+    const hasOfficialUrl = hasValue(root, "officialUrl");
+    agentStatus(root, "麦总开始执行完整审核。");
+
+    if (hasOfficialUrl && !hasValue(root, "officialPrice")) {
+      agentStatus(root, "正在先查官旗到手价。");
+      await crawlOfficialPrice(root);
+    }
+
+    if (hasOfficialUrl && !state.detailImages.length) {
+      try {
+        agentStatus(root, "正在补详情图证据。");
+        await crawlDetailImages(root);
+      } catch (error) {
+        crawlStatus(root, `详情图采集失败：${error.message}`);
+      }
+    }
+
+    if (!hasValue(root, "officialPrice")) {
+      agentStatus(root, "还缺官旗到手价，建议先补证据再生成结论。");
+      root.querySelector(".pa-focus-card")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
+
+    refreshEvidenceStates(root);
+    state.result = analyzer.analyze(readForm(root));
+    renderResult(root, state.result);
+    root.querySelector("[data-pa-result-section]")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  async function runAssistantCommand(root, rawCommand) {
+    const command = String(rawCommand || "").trim();
+    if (!command) {
+      agentStatus(root, "告诉麦总要做什么，例如：帮我完整审核这单。");
+      return;
+    }
+
+    agentStatus(root, `收到指令：${command}`);
+
+    if (/重读|读取|刷新|识别/.test(command)) {
+      fillFromPage(root);
+      showToast("麦总已重新读单");
+      return;
+    }
+
+    if (/详情|图片|图证|采图/.test(command)) {
+      await crawlDetailImages(root);
+      showToast("麦总已采集详情图");
+      return;
+    }
+
+    if (/官旗|到手价|价格|查价|爬价/.test(command) && !/完整|全部|一键|审核|判断|分析|能不能/.test(command)) {
+      await crawlOfficialPrice(root);
+      showToast("麦总已查询官旗价");
+      return;
+    }
+
+    if (/完整|全部|一键|审核|判断|分析|能不能|过不过|结论/.test(command)) {
+      await runReviewAgent(root);
+      showToast("麦总已完成审核");
+      return;
+    }
+
+    agentStatus(root, "这条指令我还不能自动执行。可以试试：完整审核、查官旗价、采集详情图。");
   }
 
   async function copyText(text) {
@@ -513,9 +669,33 @@
       }
 
       if (action === "analyze") {
+        refreshEvidenceStates(root);
         state.result = analyzer.analyze(readForm(root));
         renderResult(root, state.result);
         showToast("分析完成");
+        return;
+      }
+
+      if (action === "quick-command") {
+        const command = button.dataset.paCommand || "";
+        setCommand(root, command);
+        try {
+          await runAssistantCommand(root, command);
+        } catch (error) {
+          agentStatus(root, `执行失败：${error.message}`);
+          showToast("麦总执行失败");
+        }
+        return;
+      }
+
+      if (action === "run-command") {
+        const command = root.querySelector("[data-pa-command-input]")?.value || "";
+        try {
+          await runAssistantCommand(root, command);
+        } catch (error) {
+          agentStatus(root, `执行失败：${error.message}`);
+          showToast("麦总执行失败");
+        }
         return;
       }
 
@@ -547,7 +727,7 @@
         return;
       }
 
-      if (action === "copy" && state.result) {
+      if ((action === "copy" || action === "copy-decision") && state.result) {
         await copyText(state.result.reviewText);
         showToast("审核意见已复制");
         return;
@@ -556,6 +736,18 @@
       if (action === "copy-evidence" && state.result) {
         await copyText(evidenceText(state.result));
         showToast("证据摘要已复制");
+      }
+    });
+
+    root.addEventListener("keydown", async (event) => {
+      if (event.target.matches("[data-pa-command-input]") && event.key === "Enter") {
+        event.preventDefault();
+        try {
+          await runAssistantCommand(root, event.target.value);
+        } catch (error) {
+          agentStatus(root, `执行失败：${error.message}`);
+          showToast("麦总执行失败");
+        }
       }
     });
   }
