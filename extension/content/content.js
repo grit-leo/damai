@@ -50,7 +50,7 @@
               <img class="pa-avatar" src="${assistantAvatarUrl}" alt="">
             </div>
             <div>
-              <p class="pa-kicker">大麦 AI 审核助理</p>
+              <p class="pa-kicker">麦总 AI 审核助理</p>
               <h2 class="pa-title">新品价格风控助手</h2>
               <p class="pa-subtitle">我会读取审批单、补齐价格证据，并给出可复制的审核意见。</p>
             </div>
@@ -65,7 +65,7 @@
               </div>
               <div class="pa-hero-copy">
                 <div class="pa-status-row">
-                  <h3 class="pa-hero-title">大麦正在审核这张新品单</h3>
+                  <h3 class="pa-hero-title">麦总正在审核这张新品单</h3>
                   <span class="pa-pill" data-pa-completeness>未识别</span>
                 </div>
                 <p class="pa-hero-summary" data-pa-assistant-summary>我会先读单，再补价格证据，最后给出可复制的审核意见。</p>
@@ -177,7 +177,7 @@
               </div>
               <div class="pa-message-bubble pa-result-section">
                 <div class="pa-status-row">
-                  <h3 class="pa-section-title">大麦的审核意见</h3>
+                  <h3 class="pa-section-title">麦总的审核意见</h3>
                   <span class="pa-pill" data-pa-risk>待分析</span>
                 </div>
                 <div data-pa-result>
