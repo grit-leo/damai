@@ -4,8 +4,32 @@ const http = require("node:http");
 const path = require("node:path");
 
 const workspace = path.resolve(__dirname, "..");
-const nodeModules = "/Users/luo_chao/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules";
-const { chromium } = require(path.join(nodeModules, "playwright"));
+
+function requireRuntimeModule(moduleName) {
+  try {
+    return require(moduleName);
+  } catch (error) {
+    if (error.code !== "MODULE_NOT_FOUND") throw error;
+  }
+
+  const runtimeNodeModules = [
+    process.env.PLAYWRIGHT_NODE_MODULES,
+    process.env.HOME &&
+      path.join(process.env.HOME, ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules")
+  ].filter(Boolean);
+
+  for (const nodeModules of runtimeNodeModules) {
+    try {
+      return require(path.join(nodeModules, moduleName));
+    } catch (error) {
+      if (error.code !== "MODULE_NOT_FOUND") throw error;
+    }
+  }
+
+  throw new Error(`Cannot find ${moduleName}. Set PLAYWRIGHT_NODE_MODULES to the bundled node_modules path.`);
+}
+
+const { chromium } = requireRuntimeModule("playwright");
 const analyzer = require(path.join(workspace, "extension/shared/analyzer.js"));
 const { createCrawlerServer } = require(path.join(workspace, "server/price-crawler.js"));
 const { parseOfficialPrice } = require(path.join(workspace, "server/price-extractor.js"));
@@ -134,7 +158,77 @@ async function runPriceExtractorTests(demoBaseUrl) {
   assert.ok(images.images.some((image) => image.type === "spec"), "should classify spec image");
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runRpaApiTests(crawlerUrl) {
+  const startResponse = await fetch(`${crawlerUrl}/api/rpa/price/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      productName: "西红柿",
+      platform: "douyin",
+      useRpa: true
+    })
+  });
+  assert.equal(startResponse.status, 202, "RPA start should be async");
+  const started = await startResponse.json();
+  assert.ok(started.taskId, "RPA start should return a taskId");
+  assert.equal(started.status, "running", "RPA task should start in running status");
+  assert.equal(started.mock, false, "RPA task should not be mock on start");
+  assertIncludes(started.phaseText, "真实", "RPA start should make the real-first waiting state visible");
+
+  const firstResultResponse = await fetch(`${crawlerUrl}/api/rpa/price/result?taskId=${encodeURIComponent(started.taskId)}`);
+  const firstResult = await firstResultResponse.json();
+  assert.equal(firstResult.status, "running", "RPA task should stay running before fallback delay");
+  assert.equal(firstResult.candidates.length, 0, "RPA task should not return mock candidates immediately");
+
+  let result = null;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (attempt) await delay(300);
+    const resultResponse = await fetch(`${crawlerUrl}/api/rpa/price/result?taskId=${encodeURIComponent(started.taskId)}`);
+    result = await resultResponse.json();
+    if (result.status === "succeeded") break;
+  }
+
+  assert.equal(result.status, "succeeded", "RPA fallback task should eventually succeed");
+  assert.equal(result.mock, true, "RPA fallback should be marked explicitly");
+  assert.equal(result.candidates[0].finalPrice, 8, "RPA fallback should return PDF sample price");
+  assertIncludes(result.candidates[0].title, "番茄", "RPA fallback should return PDF sample SKU name");
+  assert.equal(result.candidates[0].priceType, "演示兜底识价", "fallback evidence should not masquerade as real RPA");
+  assert.ok(result.images.length >= 1, "RPA fallback should return image evidence");
+
+  const directResponse = await fetch(`${crawlerUrl}/api/official-price`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      productName: "西红柿",
+      platform: "douyin",
+      useRpa: true
+    })
+  });
+  assert.equal(directResponse.status, 202, "official-price should expose async RPA task for RPA platforms");
+  const directPayload = await directResponse.json();
+  assert.ok(directPayload.taskId, "official-price RPA branch should return taskId");
+}
+
 async function runBrowserTests() {
+  const savedEnv = {
+    RPA_MOCK_DELAY_MS: process.env.RPA_MOCK_DELAY_MS,
+    RPA_NEXT_POLL_MS: process.env.RPA_NEXT_POLL_MS,
+    YINGDAO_ACCESS_KEY_ID: process.env.YINGDAO_ACCESS_KEY_ID,
+    YINGDAO_ACCESS_KEY_SECRET: process.env.YINGDAO_ACCESS_KEY_SECRET,
+    YINGDAO_PRICE_ROBOT_UUID: process.env.YINGDAO_PRICE_ROBOT_UUID,
+    YINGDAO_ACCOUNT_NAME: process.env.YINGDAO_ACCOUNT_NAME
+  };
+  process.env.RPA_MOCK_DELAY_MS = "900";
+  process.env.RPA_NEXT_POLL_MS = "300";
+  process.env.YINGDAO_ACCESS_KEY_ID = "";
+  process.env.YINGDAO_ACCESS_KEY_SECRET = "";
+  process.env.YINGDAO_PRICE_ROBOT_UUID = "";
+  process.env.YINGDAO_ACCOUNT_NAME = "";
+
   const { server, url } = await startServer(workspace);
   const crawler = await listen(createCrawlerServer());
   const browser = await chromium.launch({
@@ -144,6 +238,7 @@ async function runBrowserTests() {
 
   try {
     await runPriceExtractorTests(new URL(url).origin);
+    await runRpaApiTests(crawler.url);
     const page = await browser.newPage();
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "clipboard", {
@@ -168,6 +263,8 @@ async function runBrowserTests() {
     await assertField(page, "jdPrice", "60.92");
     await assertLayoutShift(page);
     await page.locator("[data-pa-pickup-card]", { hasText: "已拾取" }).waitFor();
+    await page.locator("[data-pa-rpa-console]", { hasText: "跨平台证据采集" }).waitFor();
+    assertIncludes(await page.locator("[data-pa-rpa-console]").innerText(), "网页官旗", "RPA console should show web and RPA collection sources");
     assert.equal(
       await page.evaluate(() => document.body.innerText.includes("价格爬取服务") || document.body.innerText.includes("详情图采集服务")),
       false,
@@ -179,6 +276,7 @@ async function runBrowserTests() {
     await page.locator('[data-pa-action="crawl-detail-images"]').click();
     await page.locator("[data-pa-crawl-status]", { hasText: "已采集" }).waitFor();
     const imageTableText = await page.locator("[data-pa-image-list]").innerText();
+    assertIncludes(imageTableText, "网页官旗", "detail image table should keep source platform");
     assertIncludes(imageTableText, "ingredient", "detail image table should include ingredient image");
     assertIncludes(imageTableText, "spec", "detail image table should include spec image");
 
@@ -228,11 +326,54 @@ async function runBrowserTests() {
     assertIncludes(decisionSummary, "建议驳回", "agent should show an immediate decision summary");
     assertIncludes(decisionSummary, "20.57 元", "decision summary should show suggested purchase price");
     assertIncludes(await commandPage.locator("[data-pa-command-log]").innerText(), "高风险", "agent command log should show final risk");
-    assertIncludes(await commandPage.locator("[data-pa-image-state]").innerText(), "3 张", "agent command should collect detail images");
+    assertIncludes(await commandPage.locator("[data-pa-image-state]").innerText(), "7 张", "agent command should collect per-platform image evidence");
+    const commandEvidenceText = await commandPage.locator("[data-pa-rpa-evidence]").innerText();
+    assertIncludes(commandEvidenceText, "抖音 RPA", "agent command should keep douyin RPA image evidence");
+    assertIncludes(commandEvidenceText, "淘宝 RPA", "agent command should keep taobao RPA image evidence");
+
+    const rpaPage = await browser.newPage();
+    await rpaPage.goto(url, { waitUntil: "domcontentloaded" });
+    await rpaPage.addStyleTag({ path: path.join(workspace, "extension/content/sidebar.css") });
+    await rpaPage.addScriptTag({ path: path.join(workspace, "extension/shared/analyzer.js") });
+    await rpaPage.addScriptTag({ path: path.join(workspace, "extension/content/content.js") });
+    await rpaPage.evaluate(() => window.PurchaseAssistantUI.open());
+
+    await rpaPage.locator("#purchase-assistant-root:not(.pa-hidden)").waitFor();
+    await setCrawlerEndpoints(rpaPage, crawler.url);
+    await rpaPage.locator('[data-pa-action="rpa-demo"]').first().click();
+
+    await rpaPage.waitForFunction(() => document.querySelector('[data-pa-field="officialPrice"]')?.value === "27.99");
+    await rpaPage.locator('[data-pa-risk]', { hasText: "高风险" }).waitFor();
+    assertIncludes(await rpaPage.locator("[data-pa-crawl-status]").innerText(), "演示兜底识价", "RPA path should show explicit fallback evidence");
+    assertIncludes(await rpaPage.locator("[data-pa-image-state]").innerText(), "7 张", "RPA path should reuse multi-platform image evidence");
+    const rpaConsoleText = await rpaPage.locator("[data-pa-rpa-console]").innerText();
+    assertIncludes(rpaConsoleText, "兜底入账", "RPA console should show fallback status only after waiting");
+    assertIncludes(rpaConsoleText, "27.99 元", "RPA console should show collected price");
+    assertIncludes(rpaConsoleText, "7 张", "RPA console should show collected image count");
+    assertIncludes(rpaConsoleText, "平台图片证据包", "RPA console should show platform image evidence package");
+
+    const primaryPage = await browser.newPage();
+    await primaryPage.goto(url, { waitUntil: "domcontentloaded" });
+    await primaryPage.addStyleTag({ path: path.join(workspace, "extension/content/sidebar.css") });
+    await primaryPage.addScriptTag({ path: path.join(workspace, "extension/shared/analyzer.js") });
+    await primaryPage.addScriptTag({ path: path.join(workspace, "extension/content/content.js") });
+    await primaryPage.evaluate(() => window.PurchaseAssistantUI.open());
+    await primaryPage.locator("#purchase-assistant-root:not(.pa-hidden)").waitFor();
+    await setCrawlerEndpoints(primaryPage, crawler.url);
+    await primaryPage.locator('[data-pa-action="analyze"]').click();
+    await primaryPage.waitForFunction(() => document.querySelector('[data-pa-field="officialPrice"]')?.value === "27.99");
+    await primaryPage.locator('[data-pa-risk]', { hasText: "高风险" }).waitFor();
+    const primaryConsoleText = await primaryPage.locator("[data-pa-rpa-console]").innerText();
+    assertIncludes(primaryConsoleText, "3/3", "primary CTA should trigger all evidence sources");
+    assertIncludes(primaryConsoleText, "已获取", "primary CTA should show collected source states");
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));
     await new Promise((resolve) => crawler.server.close(resolve));
+    Object.entries(savedEnv).forEach(([key, value]) => {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    });
   }
 }
 

@@ -57,14 +57,14 @@
 先启动示例审批页：
 
 ```bash
-cd /Users/luo_chao/Documents/purchase-assitant
+cd /Users/liujishuai/git-project-7fresh/damai
 python3 -m http.server 8123
 ```
 
 再启动价格爬取服务：
 
 ```bash
-cd /Users/luo_chao/Documents/purchase-assitant
+cd /Users/liujishuai/git-project-7fresh/damai
 node server/price-crawler.js
 ```
 
@@ -118,6 +118,8 @@ http://localhost:8123/demo/approval-page.html
 ```text
 POST http://127.0.0.1:8787/api/detail-images
 POST http://127.0.0.1:8787/api/official-price
+POST http://127.0.0.1:8787/api/rpa/price/start
+GET  http://127.0.0.1:8787/api/rpa/price/result?taskId=xxx
 ```
 
 请求示例：
@@ -131,7 +133,39 @@ POST http://127.0.0.1:8787/api/official-price
 }
 ```
 
-正式接入时，建议把 `server/price-crawler.js` 部署成内网服务。对抖音这类没有稳定 H5 的平台，服务侧应改为云手机 RPA：打开 App、进入商品详情页、滚动采集详情图/截图，然后把图片 URL 或截图文件地址返回给插件。插件本身不要直接保存账号或绕过平台风控。
+### RPA 测试方式
+
+RPA 价格采集是异步的，分两步：
+
+1. 调用 `POST /api/rpa/price/start` 触发任务，返回 `taskId` 和 `pollUrl`。
+2. 调用 `GET /api/rpa/price/result?taskId=xxx` 获取结果。
+
+RPA 采用“真实优先”的异步链路：`start` 只创建手机 RPA 任务，侧栏继续轮询 `result`。未配置真实影刀密钥、结果接口未回传或真实任务超时时，服务会先保持 `running` 状态，超过 `RPA_FALLBACK_DELAY_MS` / `RPA_MOCK_DELAY_MS` 后才显式进入“演示兜底识价”，不会一触发就 mock 入账。
+
+比赛演示推荐路径：
+
+1. 打开 `http://127.0.0.1:8123/demo/approval-page.html`。
+2. 点击浏览器插件打开“新品审核智能助理”。
+3. 点击首屏的“全平台取证审核”或绿色的“全平台取证并生成意见”。
+4. 侧栏会并发采集网页官旗，并真实触发抖音/淘宝手机 RPA。面板会展示创建任务、手机搜索、截图识价、证据入账几个阶段。
+5. RPA 回传的截图/详情图会按 `网页官旗 / 抖音 RPA / 淘宝 RPA` 分组保留，方便后续图片识价和审核留痕。
+6. 如果真实 RPA 未按时回传，才会显示“兜底入账”，并把演示兜底价格用于完整比赛流程展示。
+
+curl 示例：
+
+```bash
+curl -s -X POST http://127.0.0.1:8787/api/rpa/price/start \
+  -H 'Content-Type: application/json' \
+  -d '{"productName":"西红柿","platform":"douyin","useRpa":true}'
+```
+
+启动后立即查询应看到 `status: "running"`，且没有价格候选。等待真实 RPA 回传或兜底窗口到达后，拿返回的 `taskId` 查询：
+
+```bash
+curl -s 'http://127.0.0.1:8787/api/rpa/price/result?taskId=填入上一步的taskId'
+```
+
+正式接入时，建议把 `server/price-crawler.js` 部署成内网服务。对抖音这类没有稳定 H5 的平台，服务侧应改为云手机 RPA：打开 App、搜索商品、进入商品详情页、滚动采集详情图/截图，再通过结果查询接口或 `/api/rpa/price/callback` 把图片识价结果返回给插件。插件本身不要直接保存账号或绕过平台风控。完整 RPA 接入触发方案见 `docs/rpa-integration-plan.md`。
 
 云手机 RPA 返回建议格式：
 
@@ -157,7 +191,7 @@ POST http://127.0.0.1:8787/api/official-price
 自动化验收命令：
 
 ```bash
-cd /Users/luo_chao/Documents/purchase-assitant
+cd /Users/liujishuai/git-project-7fresh/damai
 node tests/acceptance.test.js
 ```
 
@@ -176,6 +210,8 @@ node tests/acceptance.test.js
 - 新品信息拾取状态展示。
 - 技术服务地址不出现在用户界面。
 - 自然语言指令“帮我完整审核这单”自动串联查价、采图和生成结论。
+- RPA 异步 start/result 接口、真实优先等待和超时兜底。
+- 侧栏触发全平台取证后可自动轮询并完成审核。
 - 一键复制审核意见。
 
 ## 后续接入点

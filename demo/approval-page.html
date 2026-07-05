@@ -3,140 +3,593 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>新品审批详情</title>
+    <title>采销工作台 - 新品审批详情</title>
+    <link rel="stylesheet" href="../extension/content/sidebar.css?v=7">
     <style>
+      :root {
+        color-scheme: light;
+        --bg: #eef2f4;
+        --panel: #ffffff;
+        --line: #d9e1e5;
+        --text: #111827;
+        --muted: #64727a;
+        --green: #0f766e;
+        --green-soft: #e4f6f1;
+        --amber: #b66a04;
+        --amber-soft: #fff3d1;
+        --red: #b42318;
+        --red-soft: #ffe6df;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         margin: 0;
-        background: #f3f4f6;
-        color: #111827;
+        background: var(--bg);
+        color: var(--text);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
       }
 
-      header {
-        height: 56px;
-        padding: 0 28px;
+      .topbar {
+        height: 58px;
+        padding: 0 24px;
         display: flex;
         align-items: center;
+        justify-content: space-between;
         background: #ffffff;
-        border-bottom: 1px solid #e5e7eb;
-        font-weight: 700;
+        border-bottom: 1px solid var(--line);
       }
 
-      main {
-        max-width: 1080px;
-        margin: 28px auto;
-        padding: 0 24px;
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 800;
       }
 
-      .card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+      .brand-mark {
+        width: 32px;
+        height: 32px;
         border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 16px;
+        display: grid;
+        place-items: center;
+        background: #0f766e;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 850;
+      }
+
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .shell {
+        max-width: 1240px;
+        margin: 22px auto;
+        padding: 0 22px;
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 18px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(24, 39, 44, 0.05);
+      }
+
+      .queue {
+        padding: 14px;
+        align-self: start;
+      }
+
+      .queue h2,
+      .section-title {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.35;
+        font-weight: 850;
+      }
+
+      .queue-meta {
+        margin: 4px 0 12px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .queue-item {
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        margin-bottom: 10px;
+        background: #fbfcfc;
+      }
+
+      .queue-item.is-current {
+        border-color: #9bd8cc;
+        background: var(--green-soft);
+      }
+
+      .queue-item strong {
+        display: block;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .queue-item span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .detail {
+        min-width: 0;
+      }
+
+      .detail-head {
+        padding: 18px 20px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .breadcrumb {
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 12px;
       }
 
       h1 {
-        margin: 0 0 18px;
+        margin: 0;
         font-size: 22px;
+        line-height: 1.35;
+      }
+
+      .head-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      button {
+        height: 34px;
+        border: 1px solid #cbd5d9;
+        border-radius: 7px;
+        padding: 0 12px;
+        background: #ffffff;
+        color: #172026;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      button.primary {
+        border-color: var(--green);
+        background: var(--green);
+        color: #ffffff;
+      }
+
+      .body-grid {
+        padding: 18px 20px 20px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+      }
+
+      .product {
+        display: grid;
+        grid-template-columns: 132px minmax(0, 1fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .product img {
+        width: 132px;
+        height: 132px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        object-fit: cover;
       }
 
       .grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
+        gap: 14px;
       }
 
       .field {
-        border-bottom: 1px solid #f3f4f6;
+        min-width: 0;
+        border-bottom: 1px solid #eef2f4;
         padding-bottom: 10px;
       }
 
       .label {
         margin: 0 0 4px;
-        color: #6b7280;
-        font-size: 13px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.25;
       }
 
       .value {
         margin: 0;
-        color: #111827;
-        font-weight: 700;
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.45;
+        font-weight: 760;
       }
 
-      .product {
+      .full {
+        grid-column: 1 / -1;
+      }
+
+      .section {
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+      }
+
+      .price-row {
         display: grid;
-        grid-template-columns: 120px 1fr;
-        gap: 18px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .metric {
+        min-width: 0;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #fbfcfc;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .metric.warn {
+        border-color: #f0c990;
+        background: var(--amber-soft);
+      }
+
+      .metric.danger {
+        border-color: #f5b8aa;
+        background: var(--red-soft);
+      }
+
+      .side-stack {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .side-card {
+        padding: 14px;
+      }
+
+      .badge-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .badge {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 9px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbfcfc;
+        font-size: 13px;
+      }
+
+      .badge b {
+        font-size: 12px;
+        color: var(--green);
+      }
+
+      .badge.pending b {
+        color: var(--amber);
+      }
+
+      .badge.danger b {
+        color: var(--red);
+      }
+
+      .timeline {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .timeline-row {
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr);
+        gap: 9px;
         align-items: start;
       }
 
-      .image {
-        width: 120px;
-        height: 120px;
-        border-radius: 8px;
-        border: 1px solid #e5e7eb;
-        background: linear-gradient(135deg, #f97316, #facc15);
+      .dot {
+        width: 10px;
+        height: 10px;
+        margin: 4px auto 0;
+        border-radius: 999px;
+        background: var(--green);
+        box-shadow: 0 0 0 5px rgba(15, 118, 110, 0.12);
+      }
+
+      .timeline-row.pending .dot {
+        background: var(--amber);
+        box-shadow: 0 0 0 5px rgba(182, 106, 4, 0.12);
+      }
+
+      .timeline-row strong {
+        display: block;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .timeline-row span {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .assistant-launcher {
+        position: fixed;
+        right: 22px;
+        bottom: 22px;
+        z-index: 2000;
+        min-width: 176px;
+        height: 48px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1px solid rgba(15, 118, 110, 0.2);
+        border-radius: 999px;
+        background: #0f766e;
+        color: #ffffff;
+        box-shadow: 0 12px 28px rgba(15, 118, 110, 0.24);
+        font-size: 14px;
+        font-weight: 850;
+        cursor: pointer;
+      }
+
+      .assistant-launcher:hover {
+        background: #0b665f;
+      }
+
+      .assistant-launcher span {
+        width: 28px;
+        height: 28px;
         display: grid;
         place-items: center;
-        color: #ffffff;
-        font-weight: 700;
-        text-align: center;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.18);
+      }
+
+      :root.pa-layout-shift .assistant-launcher {
+        display: none;
+      }
+
+      @media (max-width: 900px) {
+        .shell,
+        .body-grid,
+        .product,
+        .price-row,
+        .side-stack {
+          grid-template-columns: 1fr;
+        }
+
+        .queue {
+          display: none;
+        }
       }
     </style>
   </head>
   <body>
-    <header>采销工作台 / 商品审批 / 新品详情</header>
-    <main>
-      <section class="card">
-        <h1>新品审批详情</h1>
-        <div class="product">
-          <div class="image" role="img" aria-label="宠物粮商品主图">商品主图</div>
-          <div class="grid">
-            <div class="field">
-              <p class="label">商品名称</p>
-              <p class="value">喜崽 新品上新 喜崽鲜泥混合价猫餐盒湿粮猫罐头主食猫头拌饭 1kg</p>
-            </div>
-            <div class="field">
-              <p class="label">商品编码</p>
-              <p class="value">100283434137</p>
-            </div>
-            <div class="field">
-              <p class="label">品牌</p>
-              <p class="value">喜崽</p>
-            </div>
-            <div class="field">
-              <p class="label">类目</p>
-              <p class="value">宠物生活 / 猫粮 / 膨化粮</p>
-            </div>
-            <div class="field">
-              <p class="label">规格</p>
-              <p class="value">1kg</p>
-            </div>
-            <div class="field">
-              <p class="label">供应商</p>
-              <p class="value">品牌供应商</p>
-            </div>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">7F</div>
+        <div>采销工作台 / 商品审批 / 新品详情</div>
+      </div>
+      <div class="top-actions">
+        <span>审批单：NP-20260705-0831</span>
+        <span>待 Boss 复核</span>
+      </div>
+    </header>
+
+    <main class="shell">
+      <aside class="panel queue">
+        <h2>今日待审新品</h2>
+        <p class="queue-meta">当前筛选：宠物生活 / 高风险优先</p>
+        <div class="queue-item is-current">
+          <strong>喜崽鲜泥混合价猫餐盒 1kg</strong>
+          <span>报价异常 / 缺竞对价证据</span>
+        </div>
+        <div class="queue-item">
+          <strong>果蔬洗洁精家庭装 2kg</strong>
+          <span>待补促销资源</span>
+        </div>
+        <div class="queue-item">
+          <strong>即食鸡胸肉组合装 900g</strong>
+          <span>待核 BOM 区间</span>
+        </div>
+      </aside>
+
+      <section class="panel detail">
+        <div class="detail-head">
+          <div>
+            <p class="breadcrumb">新品准入 / 价格风控 / 供应商提报</p>
+            <h1>新品审批详情</h1>
+          </div>
+          <div class="head-actions">
+            <button>退回采销补充</button>
+            <button class="primary">提交 Boss 复核</button>
           </div>
         </div>
-      </section>
 
-      <section class="card">
-        <div class="grid">
-          <div class="field">
-            <p class="label">采购价</p>
-            <p class="value">30.00</p>
+        <div class="body-grid">
+          <div>
+            <div class="product">
+              <img src="./assets/detail-main.svg" alt="喜崽猫餐盒商品主图">
+              <div class="grid">
+                <div class="field full">
+                  <p class="label">商品名称</p>
+                  <p class="value">喜崽 新品上新 喜崽鲜泥混合价猫餐盒湿粮猫罐头主食猫头拌饭 1kg</p>
+                </div>
+                <div class="field">
+                  <p class="label">商品编码</p>
+                  <p class="value">100283434137</p>
+                </div>
+                <div class="field">
+                  <p class="label">品牌</p>
+                  <p class="value">喜崽</p>
+                </div>
+                <div class="field">
+                  <p class="label">类目</p>
+                  <p class="value">宠物生活 / 猫粮 / 膨化粮</p>
+                </div>
+                <div class="field">
+                  <p class="label">规格</p>
+                  <p class="value">1kg</p>
+                </div>
+                <div class="field">
+                  <p class="label">供应商</p>
+                  <p class="value">品牌供应商</p>
+                </div>
+                <div class="field">
+                  <p class="label">提报渠道</p>
+                  <p class="value">品牌官旗同款</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2 class="section-title">提报价格与经营口径</h2>
+              <div class="price-row">
+                <div class="metric danger">
+                  <span>采购价</span>
+                  <strong>30.00</strong>
+                </div>
+                <div class="metric">
+                  <span>京东价</span>
+                  <strong>60.92</strong>
+                </div>
+                <div class="metric warn">
+                  <span>预估毛利率</span>
+                  <strong>70%</strong>
+                </div>
+                <div class="metric">
+                  <span>目标贡利率</span>
+                  <strong>12%</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2 class="section-title">采销备注</h2>
+              <div class="grid" style="margin-top:12px">
+                <div class="field">
+                  <p class="label">是否裸采</p>
+                  <p class="value">否</p>
+                </div>
+                <div class="field">
+                  <p class="label">促销资源</p>
+                  <p class="value">待品牌确认</p>
+                </div>
+                <div class="field">
+                  <p class="label">自投广告</p>
+                  <p class="value">未提报</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="field">
-            <p class="label">京东价</p>
-            <p class="value">60.92</p>
-          </div>
-          <div class="field">
-            <p class="label">预估毛利率</p>
-            <p class="value">70%</p>
-          </div>
+
+          <aside class="side-stack">
+            <section class="panel side-card">
+              <h2 class="section-title">审核证据状态</h2>
+              <div class="badge-list">
+                <div class="badge pending"><span>淘宝/天猫官旗价</span><b>待采集</b></div>
+                <div class="badge pending"><span>抖音电商价</span><b>待 RPA</b></div>
+                <div class="badge pending"><span>详情图/配方图</span><b>待取证</b></div>
+                <div class="badge danger"><span>利润测算</span><b>高风险</b></div>
+              </div>
+            </section>
+
+            <section class="panel side-card">
+              <h2 class="section-title">审批时间线</h2>
+              <div class="timeline">
+                <div class="timeline-row">
+                  <div class="dot"></div>
+                  <div>
+                    <strong>采销提交新品</strong>
+                    <span>2026-07-05 14:20</span>
+                  </div>
+                </div>
+                <div class="timeline-row">
+                  <div class="dot"></div>
+                  <div>
+                    <strong>系统识别价格异常</strong>
+                    <span>采购价需补外部成交价证据</span>
+                  </div>
+                </div>
+                <div class="timeline-row pending">
+                  <div class="dot"></div>
+                  <div>
+                    <strong>等待 AI 助手取证</strong>
+                    <span>官旗价、RPA 截图、BOM 区间</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </aside>
         </div>
       </section>
     </main>
+
+    <button class="assistant-launcher" type="button" data-demo-open-assistant>
+      <span>AI</span>
+      打开审核助手
+    </button>
+
+    <script src="../extension/shared/analyzer.js?v=7"></script>
+    <script src="../extension/content/content.js?v=7"></script>
+    <script>
+      document.querySelector("[data-demo-open-assistant]").addEventListener("click", function () {
+        window.PurchaseAssistantUI && window.PurchaseAssistantUI.open();
+      });
+
+      if (new URLSearchParams(window.location.search).get("assistant") === "open") {
+        window.setTimeout(function () {
+          window.PurchaseAssistantUI && window.PurchaseAssistantUI.open();
+        }, 200);
+      }
+    </script>
   </body>
 </html>

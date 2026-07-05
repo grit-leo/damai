@@ -1,6 +1,7 @@
 const http = require("node:http");
 const { parseOfficialPrice } = require("./price-extractor");
 const { extractDetailImages } = require("./detail-image-extractor");
+const { completeRpaTask, getRpaTaskResult, shouldUseRpa, startRpaTask } = require("./rpa-client");
 
 const DEFAULT_PORT = Number(process.env.PRICE_CRAWLER_PORT || 8787);
 const DEFAULT_HEADERS = {
@@ -149,20 +150,66 @@ async function crawlDetailImages(payload) {
 
 function createCrawlerServer() {
   return http.createServer(async (req, res) => {
+    const requestUrl = new URL(req.url, "http://127.0.0.1");
+    const pathname = requestUrl.pathname;
+
     if (req.method === "OPTIONS") {
       res.writeHead(204, DEFAULT_HEADERS);
       res.end();
       return;
     }
 
-    if (req.method === "GET" && req.url === "/api/health") {
+    if (req.method === "GET" && pathname === "/api/health") {
       jsonResponse(res, 200, { ok: true, service: "price-crawler" });
       return;
     }
 
-    if (req.method === "POST" && req.url === "/api/official-price") {
+    if (req.method === "POST" && pathname === "/api/rpa/price/start") {
       try {
         const payload = await readBody(req);
+        const result = await startRpaTask(payload);
+        jsonResponse(res, 202, result);
+      } catch (error) {
+        jsonResponse(res, 500, { ok: false, error: error.message, status: "failed", candidates: [], images: [] });
+      }
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/rpa/price/result") {
+      try {
+        const result = await getRpaTaskResult(requestUrl.searchParams.get("taskId"));
+        const statusCode = result.status === "not_found" ? 404 : 200;
+        jsonResponse(res, statusCode, result);
+      } catch (error) {
+        jsonResponse(res, 500, { ok: false, error: error.message, status: "failed", candidates: [], images: [] });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/rpa/price/callback") {
+      try {
+        const payload = await readBody(req);
+        const result = completeRpaTask(payload);
+        const statusCode = result.status === "not_found" ? 404 : 200;
+        jsonResponse(res, statusCode, result);
+      } catch (error) {
+        jsonResponse(res, 500, { ok: false, error: error.message, status: "failed", candidates: [], images: [] });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/official-price") {
+      try {
+        const payload = await readBody(req);
+        if (shouldUseRpa(payload)) {
+          const result = await startRpaTask(payload);
+          jsonResponse(res, 202, {
+            ...result,
+            async: true,
+            message: "RPA 任务已触发，请调用 pollUrl 查询结果。"
+          });
+          return;
+        }
         const result = await crawlOfficialPrice(payload);
         jsonResponse(res, result.ok ? 200 : 422, result);
       } catch (error) {
@@ -171,9 +218,18 @@ function createCrawlerServer() {
       return;
     }
 
-    if (req.method === "POST" && req.url === "/api/detail-images") {
+    if (req.method === "POST" && pathname === "/api/detail-images") {
       try {
         const payload = await readBody(req);
+        if (shouldUseRpa(payload)) {
+          const result = await startRpaTask(payload);
+          jsonResponse(res, 202, {
+            ...result,
+            async: true,
+            message: "RPA 任务已触发，请调用 pollUrl 查询结果。"
+          });
+          return;
+        }
         const result = await crawlDetailImages(payload);
         jsonResponse(res, result.ok ? 200 : 422, result);
       } catch (error) {

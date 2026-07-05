@@ -7,16 +7,46 @@
     extracted: null,
     result: null,
     lastOfficialPrice: null,
-    detailImages: []
+    lastRpaResult: null,
+    rpa: {
+      status: "idle",
+      platform: "all",
+      taskId: "",
+      mock: null,
+      attempt: 0,
+      price: null,
+      images: 0,
+      phaseText: "等待触发真实手机 RPA",
+      nextPollMs: 1200,
+      sourceStatus: {
+        web: "waiting",
+        douyin: "waiting",
+        taobao: "waiting"
+      }
+    },
+    detailImages: [],
+    rpaEvidenceImages: {
+      web: [],
+      douyin: [],
+      taobao: []
+    }
   };
   const OFFICIAL_PRICE_PATH = "/api/official-price";
   const DETAIL_IMAGE_PATH = "/api/detail-images";
+  const RPA_PRICE_START_PATH = "/api/rpa/price/start";
+  const RPA_PRICE_RESULT_PATH = "/api/rpa/price/result";
   const PICKUP_FIELDS = [
     ["productName", "商品名"],
     ["skuId", "商品编码"],
     ["purchasePrice", "采购价"],
     ["jdPrice", "京东价"]
   ];
+  const EVIDENCE_SOURCES = ["web", "douyin", "taobao"];
+  const SOURCE_LABELS = {
+    web: "网页官旗",
+    douyin: "抖音 RPA",
+    taobao: "淘宝 RPA"
+  };
 
   function formatMoney(value) {
     return analyzer.formatMoney(value);
@@ -33,6 +63,14 @@
         ? `<textarea data-pa-field="${name}" placeholder="${placeholder}"></textarea>`
         : `<input data-pa-field="${name}" type="${type}" placeholder="${placeholder}">`;
     return `<div class="${className}"><label>${label}</label>${input}</div>`;
+  }
+
+  function selectHtml(name, label, options, wide = false) {
+    const className = wide ? "pa-field pa-wide" : "pa-field";
+    const optionHtml = options
+      .map((item) => `<option value="${item.value}">${item.label}</option>`)
+      .join("");
+    return `<div class="${className}"><label>${label}</label><select data-pa-field="${name}">${optionHtml}</select></div>`;
   }
 
   function extensionAsset(path) {
@@ -60,7 +98,7 @@
             <div>
               <p class="pa-kicker">麦总 AI 审核助理</p>
               <h2 class="pa-title">新品价格风控助手</h2>
-              <p class="pa-subtitle">我会读取审批单、补齐价格证据，并给出可复制的审核意见。</p>
+              <p class="pa-subtitle">我会读取审批单，触发跨平台 RPA 取证，并给出可复制的审核意见。</p>
             </div>
           </div>
           <button class="pa-close" data-pa-action="close" title="关闭">×</button>
@@ -142,11 +180,76 @@
                 <small data-pa-result-state>待生成审核结论</small>
               </div>
             </div>
+            <div class="pa-rpa-console" data-pa-rpa-console data-rpa-status="idle">
+              <div class="pa-rpa-head">
+                <div>
+                <span>跨平台证据采集</span>
+                  <strong data-pa-rpa-title>网页官旗 / 手机抖音 / 手机淘宝自动取证</strong>
+                </div>
+                <span class="pa-rpa-badge" data-pa-rpa-mode>自动</span>
+              </div>
+              <div class="pa-rpa-sources">
+                <div class="pa-rpa-source" data-pa-source="web">
+                  <strong>网页官旗</strong>
+                  <span data-pa-source-status="web">待命</span>
+                </div>
+                <div class="pa-rpa-source" data-pa-source="douyin">
+                  <strong>抖音 RPA</strong>
+                  <span data-pa-source-status="douyin">待命</span>
+                </div>
+                <div class="pa-rpa-source" data-pa-source="taobao">
+                  <strong>淘宝 RPA</strong>
+                  <span data-pa-source-status="taobao">待命</span>
+                </div>
+              </div>
+              <div class="pa-rpa-flow">
+                <div class="pa-rpa-step" data-pa-rpa-step="start">
+                  <span>创建任务</span>
+                  <strong data-pa-rpa-start>待命</strong>
+                </div>
+                <div class="pa-rpa-step" data-pa-rpa-step="poll">
+                  <span>手机执行</span>
+                  <strong data-pa-rpa-poll>未开始</strong>
+                </div>
+                <div class="pa-rpa-step" data-pa-rpa-step="settle">
+                  <span>截图识价</span>
+                  <strong data-pa-rpa-settle>待入账</strong>
+                </div>
+              </div>
+              <div class="pa-rpa-stage-note">
+                <span class="pa-live-dot"></span>
+                <strong data-pa-rpa-phase>等待触发真实手机 RPA</strong>
+              </div>
+              <div class="pa-rpa-proof-grid">
+                <div>
+                  <span>入账平台</span>
+                  <strong data-pa-rpa-task>--</strong>
+                </div>
+                <div>
+                  <span>最佳采集价</span>
+                  <strong data-pa-rpa-price>--</strong>
+                </div>
+                <div>
+                  <span>截图/详情图</span>
+                  <strong data-pa-rpa-images>--</strong>
+                </div>
+              </div>
+              <div class="pa-rpa-evidence" data-pa-rpa-evidence>
+                <div class="pa-rpa-evidence-head">
+                  <span>平台图片证据包</span>
+                  <strong data-pa-rpa-evidence-count>等待图片回传</strong>
+                </div>
+                <div class="pa-rpa-evidence-list" data-pa-rpa-evidence-list>
+                  <div class="pa-rpa-evidence-empty">抖音/淘宝 RPA 图片会按平台归档在这里。</div>
+                </div>
+              </div>
+            </div>
             <div class="pa-command-grid">
               <button data-pa-action="refresh">重新读单</button>
               <button data-pa-action="crawl-detail-images">采集详情图</button>
               <button data-pa-action="crawl-official-price">查询官旗价</button>
-              <button class="pa-primary" data-pa-action="analyze">生成审核意见</button>
+              <button data-pa-action="rpa-demo">全平台取证审核</button>
+              <button class="pa-primary" data-pa-action="analyze">全平台取证并生成意见</button>
             </div>
             <div class="pa-command-box">
               <div class="pa-command-input-row">
@@ -157,6 +260,7 @@
                 <button data-pa-action="quick-command" data-pa-command="帮我完整审核这单">完整审核</button>
                 <button data-pa-action="quick-command" data-pa-command="先查官旗价">查官旗价</button>
                 <button data-pa-action="quick-command" data-pa-command="采集详情图证据">采详情图</button>
+                <button data-pa-action="rpa-demo">全平台取证</button>
               </div>
               <p class="pa-command-log" data-pa-command-log>麦总等待指令。</p>
             </div>
@@ -253,7 +357,7 @@
                 <div data-pa-result>
                   <div class="pa-empty-result">
                     <div class="pa-empty-dot"></div>
-                    <p>点击“生成审核意见”后，我会输出风险等级、建议采购价和可复制意见。</p>
+                    <p>点击“全平台取证并生成意见”后，我会先并发采集网页官旗、抖音和淘宝证据，再输出审核结论。</p>
                   </div>
                 </div>
               </div>
@@ -276,6 +380,7 @@
               </div>
               <input data-pa-field="crawlerEndpoint" type="hidden">
               <input data-pa-field="detailImageEndpoint" type="hidden">
+              <input data-pa-field="platform" type="hidden" value="auto">
               <div data-pa-image-list></div>
             </section>
           </div>
@@ -317,6 +422,290 @@
     const { protocol, hostname } = window.location;
     if (!/^(localhost|127\.0\.0\.1)$/.test(hostname)) return "";
     return `${protocol}//${hostname}:8787${path}`;
+  }
+
+  function serviceOrigin(form) {
+    const endpoint = form.crawlerEndpoint || defaultServiceEndpoint(OFFICIAL_PRICE_PATH);
+    if (!endpoint) return "";
+    try {
+      return new URL(endpoint).origin;
+    } catch {
+      return "";
+    }
+  }
+
+  function rpaEndpoint(form, path) {
+    const origin = serviceOrigin(form);
+    return origin ? `${origin}${path}` : "";
+  }
+
+  function shouldUseRpa(form) {
+    const platform = String(form.platform || "").toLowerCase();
+    const url = String(form.officialUrl || "").toLowerCase();
+    return platform === "douyin" || platform === "taobao" || /^rpa:\/\//.test(url) || /douyin|jinritemai|taobao|tmall/.test(url);
+  }
+
+  function platformLabel(platform) {
+    if (platform === "all") return "全平台";
+    if (platform === "douyin") return "抖音 RPA";
+    if (platform === "taobao") return "淘宝 RPA";
+    return "网页官旗";
+  }
+
+  function sourceLabel(sourceKey) {
+    return SOURCE_LABELS[sourceKey] || platformLabel(sourceKey);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function emptyEvidenceImages() {
+    return { web: [], douyin: [], taobao: [] };
+  }
+
+  function sourceFromValue(value, fallback = "web") {
+    const text = String(value || "").toLowerCase();
+    if (/douyin|抖音/.test(text)) return "douyin";
+    if (/taobao|tmall|淘宝|天猫/.test(text)) return "taobao";
+    if (/web|official|官旗|网页/.test(text)) return "web";
+    return fallback;
+  }
+
+  function imageSourceKey(image, fallback = "web") {
+    return sourceFromValue(image?.sourceKey || image?.source || image?.platformCode || image?.platform, fallback);
+  }
+
+  function decorateImages(images, fallbackSource) {
+    return (images || [])
+      .map((image, index) => {
+        const value = typeof image === "string" ? { url: image } : image || {};
+        const sourceKey = imageSourceKey(value, fallbackSource);
+        return {
+          ...value,
+          url: value.url || value.src || value.href || "",
+          type: value.type || "screenshot",
+          sourceKey,
+          sourceLabel: value.sourceLabel || sourceLabel(sourceKey),
+          evidence: value.evidence || `${sourceLabel(sourceKey)} 图片证据 ${index + 1}`
+        };
+      })
+      .filter((image) => image.url);
+  }
+
+  function decorateEvidencePayload(payload, fallbackSource) {
+    const sourceKey = sourceFromValue(payload?.sourceKey || payload?.platform, fallbackSource);
+    return {
+      ...payload,
+      sourceKey,
+      candidates: (payload?.candidates || []).map((candidate) => ({
+        ...candidate,
+        sourceKey: candidate.sourceKey || sourceKey,
+        sourceLabel: candidate.sourceLabel || sourceLabel(sourceKey)
+      })),
+      images: decorateImages(payload?.images || [], sourceKey)
+    };
+  }
+
+  function groupImagesBySource(images, fallbackSource = "web") {
+    const grouped = emptyEvidenceImages();
+    decorateImages(images, fallbackSource).forEach((image) => {
+      const sourceKey = imageSourceKey(image, fallbackSource);
+      if (!grouped[sourceKey]) grouped[sourceKey] = [];
+      grouped[sourceKey].push(image);
+    });
+    return grouped;
+  }
+
+  function evidenceImagesFromPayload(payload) {
+    const grouped = emptyEvidenceImages();
+    if (payload?.imagesBySource) {
+      EVIDENCE_SOURCES.forEach((sourceKey) => {
+        grouped[sourceKey] = decorateImages(payload.imagesBySource[sourceKey] || [], sourceKey);
+      });
+      return grouped;
+    }
+    const inferred = groupImagesBySource(payload?.images || [], payload?.sourceKey || "web");
+    EVIDENCE_SOURCES.forEach((sourceKey) => {
+      grouped[sourceKey] = inferred[sourceKey] || [];
+    });
+    return grouped;
+  }
+
+  function flattenEvidenceImages(groups) {
+    return EVIDENCE_SOURCES.flatMap((sourceKey) => groups[sourceKey] || []);
+  }
+
+  function renderRpaEvidence(root) {
+    const list = root.querySelector("[data-pa-rpa-evidence-list]");
+    if (!list) return;
+    const groups = state.rpaEvidenceImages || emptyEvidenceImages();
+    const total = flattenEvidenceImages(groups).length;
+    setText(root, "[data-pa-rpa-evidence-count]", total ? `${total} 张图片已归档` : "等待图片回传");
+    if (!total) {
+      list.innerHTML = `<div class="pa-rpa-evidence-empty">抖音/淘宝 RPA 图片会按平台归档在这里。</div>`;
+      return;
+    }
+
+    list.innerHTML = EVIDENCE_SOURCES.map((sourceKey) => {
+      const images = groups[sourceKey] || [];
+      const imageLinks = images.length
+        ? images
+            .slice(0, 4)
+            .map((image, index) => {
+              const label = image.type === "detail" ? `详情图${index + 1}` : `截图${index + 1}`;
+              return `<a href="${escapeHtml(image.url)}" target="_blank" rel="noreferrer" title="${escapeHtml(image.evidence || image.alt || "")}">${label}</a>`;
+            })
+            .join("")
+        : `<span class="pa-rpa-evidence-waiting">待回传</span>`;
+      const extra = images.length > 4 ? `<em>+${images.length - 4}</em>` : "";
+      return `
+        <div class="pa-rpa-evidence-source" data-evidence-source="${sourceKey}">
+          <div>
+            <strong>${sourceLabel(sourceKey)}</strong>
+            <span>${images.length ? `${images.length} 张` : "暂无图片"}</span>
+          </div>
+          <div class="pa-rpa-evidence-links">${imageLinks}${extra}</div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function shortTaskId(taskId) {
+    if (!taskId) return "--";
+    return String(taskId).slice(0, 8);
+  }
+
+  function setRpaStep(root, name, stateName) {
+    const step = root.querySelector(`[data-pa-rpa-step="${name}"]`);
+    if (!step) return;
+    step.classList.remove("is-active", "is-done", "is-waiting");
+    step.classList.add(`is-${stateName}`);
+  }
+
+  function sourceStatusLabel(status) {
+    return {
+      waiting: "待命",
+      running: "采集中",
+      succeeded: "已获取",
+      failed: "未获取"
+    }[status] || "待命";
+  }
+
+  function renderSourceStates(root) {
+    const sourceStatus = state.rpa.sourceStatus || {};
+    root.querySelectorAll("[data-pa-source]").forEach((node) => {
+      const key = node.dataset.paSource;
+      const status = sourceStatus[key] || "waiting";
+      node.dataset.sourceStatus = status;
+      setText(node, `[data-pa-source-status="${key}"]`, sourceStatusLabel(status));
+    });
+  }
+
+  function updateRpaConsole(root, patch = {}) {
+    state.rpa = {
+      ...state.rpa,
+      ...patch,
+      sourceStatus: {
+        ...(state.rpa.sourceStatus || {}),
+        ...(patch.sourceStatus || {})
+      }
+    };
+    const rpa = state.rpa;
+    const consoleNode = root.querySelector("[data-pa-rpa-console]");
+    if (consoleNode) consoleNode.dataset.rpaStatus = rpa.status;
+
+    const statusText = {
+      idle: "未触发",
+      selected: "待触发",
+      starting: "创建任务",
+      polling: "手机执行中",
+      succeeded: rpa.mock ? "兜底入账" : "真实入账",
+      failed: "失败"
+    }[rpa.status] || "待命";
+
+    setText(root, "[data-pa-rpa-mode]", statusText);
+    setText(root, "[data-pa-rpa-title]", `${platformLabel(rpa.platform)} ${rpa.status === "idle" ? "自动取证待命" : "手机取证链路"}`);
+    setText(root, "[data-pa-rpa-task]", shortTaskId(rpa.taskId));
+    setText(root, "[data-pa-rpa-price]", rpa.price ? formatMoney(rpa.price) : "--");
+    setText(root, "[data-pa-rpa-images]", rpa.images ? `${rpa.images} 张` : "--");
+    setText(root, "[data-pa-rpa-phase]", rpa.phaseText || "等待触发真实手机 RPA");
+
+    const started = Boolean(rpa.taskId);
+    setText(root, "[data-pa-rpa-start]", started ? "已创建" : "待命");
+    setText(root, "[data-pa-rpa-poll]", rpa.attempt ? `${rpa.attempt}/30` : "未开始");
+    setText(
+      root,
+      "[data-pa-rpa-settle]",
+      rpa.status === "succeeded" ? (rpa.mock ? "兜底已入账" : "真实已入账") : "待入账"
+    );
+
+    setRpaStep(root, "start", started ? "done" : rpa.status === "starting" ? "active" : "waiting");
+    setRpaStep(root, "poll", rpa.status === "polling" ? "active" : rpa.status === "succeeded" ? "done" : "waiting");
+    setRpaStep(root, "settle", rpa.status === "succeeded" ? "done" : rpa.status === "failed" ? "active" : "waiting");
+    renderSourceStates(root);
+    renderRpaEvidence(root);
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  function absoluteServiceUrl(form, value) {
+    if (!value) return "";
+    if (/^https?:\/\//i.test(value)) return value;
+    const origin = serviceOrigin(form);
+    return origin ? `${origin}${value}` : value;
+  }
+
+  function demoOfficialUrl() {
+    const { protocol, hostname, port } = window.location;
+    if (!/^(localhost|127\.0\.0\.1)$/.test(hostname)) return "";
+    return `${protocol}//${hostname}${port ? `:${port}` : ""}/demo/official-store-page.html`;
+  }
+
+  function officialUrlForWeb(form) {
+    return form.officialUrl || demoOfficialUrl();
+  }
+
+  function uniqueImages(images) {
+    const seen = new Set();
+    return images.filter((image) => {
+      if (!image.url) return false;
+      const key = `${image.sourceKey || ""}:${image.url}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function mergeEvidencePayloads(payloads) {
+    const decoratedPayloads = payloads.map((payload) => decorateEvidencePayload(payload, payload.sourceKey || "web"));
+    const candidates = decoratedPayloads.flatMap((payload) => payload.candidates || []);
+    const imagesBySource = emptyEvidenceImages();
+    decoratedPayloads.forEach((payload) => {
+      const grouped = groupImagesBySource(payload.images || [], payload.sourceKey);
+      EVIDENCE_SOURCES.forEach((sourceKey) => {
+        imagesBySource[sourceKey].push(...(grouped[sourceKey] || []));
+        imagesBySource[sourceKey] = uniqueImages(imagesBySource[sourceKey]);
+      });
+    });
+    const images = flattenEvidenceImages(imagesBySource);
+    candidates.sort((a, b) => b.confidence - a.confidence || (a.finalPrice || Infinity) - (b.finalPrice || Infinity));
+    return {
+      ok: candidates.length > 0,
+      candidates,
+      images,
+      imagesBySource,
+      taskId: `${payloads.filter((payload) => payload.candidates?.length).length}/${payloads.length}`,
+      mock: payloads.some((payload) => payload.mock),
+      capturedAt: new Date().toISOString()
+    };
   }
 
   function renderPickup(root, data) {
@@ -392,6 +781,7 @@
     setField(root, "uncontrollableRate", "2.5");
     setField(root, "adRate", "0");
     setField(root, "targetProfitRate", "12");
+    if (!getField(root, "platform").value) setField(root, "platform", "auto");
     if (!getField(root, "crawlerEndpoint").value) {
       setField(root, "crawlerEndpoint", defaultServiceEndpoint(OFFICIAL_PRICE_PATH));
     }
@@ -407,6 +797,7 @@
     agentStatus(root, "读单完成，下一步补价格证据。");
     setText(root, "[data-pa-read-state]", `完整度 ${data.completeness}%`);
     renderPickup(root, data);
+    updateRpaConsole(root, { status: "idle", platform: "all", phaseText: "等待触发真实手机 RPA" });
   }
 
   function riskClass(level) {
@@ -518,7 +909,8 @@
     return [
       "商品详情图证据",
       ...state.detailImages.map((image, index) => {
-        return `${index + 1}. [${image.type || "image"}] ${image.url} 置信度 ${image.confidence || "-"} 说明：${image.alt || image.evidence || "-"}`;
+        const source = image.sourceLabel || sourceLabel(image.sourceKey || "web");
+        return `${index + 1}. [${source}/${image.type || "image"}] ${image.url} 置信度 ${image.confidence || "-"} 说明：${image.alt || image.evidence || "-"}`;
       })
     ].join("\n");
   }
@@ -528,13 +920,34 @@
     if (status) status.textContent = message;
   }
 
-  async function crawlOfficialPrice(root) {
-    const form = readForm(root);
-    const endpoint = form.crawlerEndpoint || defaultServiceEndpoint(OFFICIAL_PRICE_PATH);
-    if (!endpoint) throw new Error("价格采集能力未连接，请联系管理员配置。");
-    crawlStatus(root, "正在爬取官旗到手价...");
+  async function runRpaPriceTask(root, form, platformOverride, sourceKey, options = {}) {
+    const platform = platformOverride || form.platform || "douyin";
+    const source = sourceKey || platform;
+    const standalone = options.standalone !== false;
+    const startEndpoint = rpaEndpoint(form, RPA_PRICE_START_PATH);
+    if (!startEndpoint) throw new Error("RPA 采集服务未连接，请先启动价格采集服务。");
 
-    const response = await fetch(endpoint, {
+    crawlStatus(root, "正在创建真实手机 RPA 任务...");
+    setText(root, "[data-pa-price-state]", "RPA采集中");
+    setText(root, "[data-pa-evidence-state]", "手机RPA正在搜索、截图并识别价格");
+    updateRpaConsole(
+      root,
+      standalone
+        ? {
+            status: "starting",
+            platform,
+            taskId: "",
+            mock: null,
+            attempt: 0,
+            price: null,
+            images: 0,
+            phaseText: "正在创建真实手机 RPA 任务",
+            sourceStatus: { [source]: "running" }
+          }
+        : { status: "polling", platform: "all", phaseText: "正在创建真实手机 RPA 任务", sourceStatus: { [source]: "running" } }
+    );
+
+    const startResponse = await fetch(startEndpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -542,12 +955,187 @@
         brand: form.brand,
         spec: form.spec,
         skuId: form.skuId,
-        officialUrl: form.officialUrl
+        officialUrl: form.officialUrl,
+        platform,
+        useRpa: true
       })
     });
+    const started = await startResponse.json();
+    if (!startResponse.ok || !started.taskId) {
+      updateRpaConsole(root, { status: standalone ? "failed" : "polling", sourceStatus: { [source]: "failed" } });
+      throw new Error(started.error || "RPA 任务触发失败");
+    }
+    updateRpaConsole(root, {
+      status: "polling",
+      platform: standalone ? platform : "all",
+      taskId: standalone ? started.taskId : state.rpa.taskId || "2个RPA任务",
+      mock: started.mock,
+      attempt: 0,
+      phaseText: started.phaseText || "手机 RPA 已触发，等待搜索和截图识价",
+      nextPollMs: started.nextPollMs || 1200,
+      sourceStatus: { [source]: "running" }
+    });
 
-    const payload = await response.json();
-    if (!response.ok || !payload.candidates || !payload.candidates.length) {
+    const pollUrl = absoluteServiceUrl(
+      form,
+      started.pollUrl || `${RPA_PRICE_RESULT_PATH}?taskId=${encodeURIComponent(started.taskId)}`
+    );
+
+    let nextDelay = started.nextPollMs || 1200;
+    for (let attempt = 1; attempt <= 30; attempt += 1) {
+      if (attempt > 1) await wait(Math.max(600, Math.min(2500, nextDelay)));
+      crawlStatus(root, `手机 RPA 已触发，正在等待截图识价结果 ${attempt}/30...`);
+      updateRpaConsole(root, { status: "polling", attempt });
+      const resultResponse = await fetch(pollUrl);
+      const payload = await resultResponse.json();
+      nextDelay = payload.nextPollMs || nextDelay;
+      if (!resultResponse.ok) {
+        updateRpaConsole(root, { status: standalone ? "failed" : "polling", sourceStatus: { [source]: "failed" } });
+        throw new Error(payload.error || "RPA 结果查询失败");
+      }
+      updateRpaConsole(root, {
+        status: "polling",
+        attempt,
+        mock: payload.mock,
+        phaseText: payload.phaseText || "手机 RPA 异步执行中",
+        nextPollMs: payload.nextPollMs || nextDelay
+      });
+      if (payload.status === "succeeded" && payload.candidates && payload.candidates.length) {
+        state.lastRpaResult = payload;
+        updateRpaConsole(
+          root,
+          standalone
+            ? {
+                status: "succeeded",
+                platform,
+                taskId: payload.taskId || started.taskId,
+                mock: payload.mock,
+                phaseText: payload.phaseText || "手机 RPA 截图识价已入账",
+                price: payload.candidates[0].finalPrice,
+                images: payload.images?.length || 0,
+                sourceStatus: { [source]: "succeeded" }
+              }
+            : { status: "polling", platform: "all", phaseText: payload.phaseText || "手机 RPA 截图识价已入账", sourceStatus: { [source]: "succeeded" } }
+        );
+        return decorateEvidencePayload({ ...payload, sourceKey: source }, source);
+      }
+      if (payload.status === "failed" || payload.status === "not_found") {
+        updateRpaConsole(root, { status: standalone ? "failed" : "polling", sourceStatus: { [source]: "failed" } });
+        throw new Error(payload.error || "RPA 未获取到有效结果");
+      }
+    }
+
+    updateRpaConsole(root, { status: standalone ? "failed" : "polling", sourceStatus: { [source]: "failed" } });
+    throw new Error("真实手机 RPA 仍在执行，暂未回传可入账价格。");
+  }
+
+  async function collectWebSource(root, form) {
+    const officialUrl = officialUrlForWeb(form);
+    if (!officialUrl) throw new Error("缺少网页官旗链接");
+
+    updateRpaConsole(root, { status: "polling", platform: "all", phaseText: "网页官旗开始解析价格和详情图", sourceStatus: { web: "running" } });
+    const endpoint = form.crawlerEndpoint || defaultServiceEndpoint(OFFICIAL_PRICE_PATH);
+    const imageEndpoint = form.detailImageEndpoint || defaultServiceEndpoint(DETAIL_IMAGE_PATH);
+    const priceResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productName: form.productName,
+        brand: form.brand,
+        spec: form.spec,
+        skuId: form.skuId,
+        officialUrl,
+        platform: "auto",
+        useRpa: false
+      })
+    });
+    const pricePayload = await priceResponse.json();
+    if (!priceResponse.ok || !pricePayload.candidates?.length) {
+      updateRpaConsole(root, { status: "polling", sourceStatus: { web: "failed" } });
+      throw new Error(pricePayload.error || "网页官旗价未获取到");
+    }
+
+    let imagePayload = { images: [] };
+    try {
+      const imageResponse = await fetch(imageEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName: form.productName,
+          brand: form.brand,
+          spec: form.spec,
+          skuId: form.skuId,
+          officialUrl,
+          platform: "auto",
+          useRpa: false
+        })
+      });
+      imagePayload = await imageResponse.json();
+    } catch {
+      imagePayload = { images: [] };
+    }
+
+    updateRpaConsole(root, { status: "polling", phaseText: "网页官旗价已获取，继续等待手机 RPA", sourceStatus: { web: "succeeded" } });
+    return decorateEvidencePayload({
+      ...pricePayload,
+      images: imagePayload.images || [],
+      sourceKey: "web",
+      mock: false
+    }, "web");
+  }
+
+  async function collectAllEvidence(root, form) {
+    crawlStatus(root, "正在并发采集网页官旗，并触发抖音/淘宝手机 RPA...");
+    setText(root, "[data-pa-price-state]", "多平台采集中");
+    setText(root, "[data-pa-evidence-state]", "网页解析 + 手机RPA截图识价");
+    updateRpaConsole(root, {
+      status: "starting",
+      platform: "all",
+      taskId: "",
+      mock: null,
+      attempt: 0,
+      price: null,
+      images: 0,
+      phaseText: "正在创建抖音和淘宝手机 RPA 任务",
+      sourceStatus: { web: "running", douyin: "running", taobao: "running" }
+    });
+
+    const jobs = [
+      collectWebSource(root, form),
+      runRpaPriceTask(root, form, "douyin", "douyin", { standalone: false }),
+      runRpaPriceTask(root, form, "taobao", "taobao", { standalone: false })
+    ];
+    const settled = await Promise.allSettled(jobs);
+    const payloads = settled.filter((item) => item.status === "fulfilled").map((item) => item.value);
+    if (!payloads.length) {
+      updateRpaConsole(root, { status: "failed" });
+      throw new Error("多平台均未获取到有效价格证据");
+    }
+
+    const merged = mergeEvidencePayloads(payloads);
+    updateRpaConsole(root, {
+      status: "succeeded",
+      platform: "all",
+      taskId: `${payloads.length}/3`,
+      mock: merged.mock,
+      phaseText: merged.mock ? "真实 RPA 结果未全部回传，已使用演示兜底补齐证据" : "真实多平台证据已入账",
+      price: merged.candidates[0]?.finalPrice,
+      images: merged.images.length
+    });
+    return merged;
+  }
+
+  function applyImageEvidencePayload(root, payload) {
+    const groups = evidenceImagesFromPayload(payload);
+    state.rpaEvidenceImages = groups;
+    state.detailImages = flattenEvidenceImages(groups);
+    renderRpaEvidence(root);
+    renderImageList(root);
+    setText(root, "[data-pa-image-state]", state.detailImages.length ? `${state.detailImages.length} 张` : "待采集");
+  }
+
+  function applyOfficialPricePayload(root, payload) {
+    if (!payload.candidates || !payload.candidates.length) {
       const reason = payload.error || payload.errors?.[0]?.error || "未获取到有效官旗价";
       throw new Error(reason);
     }
@@ -562,10 +1150,36 @@
     setText(root, "[data-pa-evidence-state]", "官旗价已获取，继续补低价/BOM");
     agentStatus(root, "官旗价已入库，可以继续生成审核意见。");
 
+    if ((payload.images && payload.images.length) || payload.imagesBySource) {
+      applyImageEvidencePayload(root, payload);
+    }
+
+    if (payload.taskId || payload.mock !== undefined) {
+      updateRpaConsole(root, {
+        status: "succeeded",
+        platform: payload.taskId && String(payload.taskId).includes("/") ? "all" : readForm(root).platform || "all",
+        taskId: payload.taskId || state.rpa.taskId,
+        mock: payload.mock,
+        phaseText: payload.phaseText || (payload.mock ? "真实 RPA 未按时回传，演示兜底识价已入账" : "真实手机 RPA 截图识价已入账"),
+        price: best.finalPrice,
+        images: payload.images?.length || state.detailImages.length
+      });
+    }
+
     crawlStatus(
       root,
       `已获取：${best.platform || "官旗"} ${best.shopName || ""}，${best.priceType || "到手价"} ${formatMoney(best.finalPrice)}，置信度 ${best.confidence}。`
     );
+  }
+
+  async function crawlOfficialPrice(root) {
+    const form = readForm(root);
+    const endpoint = form.crawlerEndpoint || defaultServiceEndpoint(OFFICIAL_PRICE_PATH);
+    if (!endpoint) throw new Error("价格采集能力未连接，请联系管理员配置。");
+    crawlStatus(root, "正在并发采集多平台价格证据...");
+
+    const payload = await collectAllEvidence(root, form);
+    applyOfficialPricePayload(root, payload);
   }
 
   function renderImageList(root) {
@@ -577,14 +1191,15 @@
     }
 
     const rows = state.detailImages
-      .slice(0, 8)
+      .slice(0, 12)
       .map(
         (image, index) => `
           <tr>
             <td>${index + 1}</td>
-            <td>${image.type || "image"}</td>
-            <td>${image.confidence || "-"}</td>
-            <td><a href="${image.url}" target="_blank" rel="noreferrer">打开</a></td>
+            <td>${escapeHtml(image.sourceLabel || sourceLabel(image.sourceKey || "web"))}</td>
+            <td>${escapeHtml(image.type || "image")}</td>
+            <td>${escapeHtml(image.confidence || "-")}</td>
+            <td><a href="${escapeHtml(image.url)}" target="_blank" rel="noreferrer">打开</a></td>
           </tr>
         `
       )
@@ -595,6 +1210,7 @@
         <thead>
           <tr>
             <th>#</th>
+            <th>来源</th>
             <th>类型</th>
             <th>置信度</th>
             <th>图片</th>
@@ -612,30 +1228,47 @@
     if (!endpoint) throw new Error("详情图采集能力未连接，请联系管理员配置。");
     crawlStatus(root, "正在采集商品详情图...");
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        productName: form.productName,
-        brand: form.brand,
-        spec: form.spec,
-        skuId: form.skuId,
-        officialUrl: form.officialUrl
-      })
-    });
+    let payload;
+    if (!form.officialUrl && !state.lastRpaResult?.images?.length) {
+      payload = await collectAllEvidence(root, form);
+      applyOfficialPricePayload(root, payload);
+    } else if (shouldUseRpa(form)) {
+      payload = state.lastRpaResult?.images?.length ? state.lastRpaResult : await runRpaPriceTask(root, form);
+      if (payload.candidates?.length && !hasValue(root, "officialPrice")) {
+        applyOfficialPricePayload(root, payload);
+      }
+    } else {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName: form.productName,
+          brand: form.brand,
+          spec: form.spec,
+          skuId: form.skuId,
+          officialUrl: officialUrlForWeb(form),
+          platform: form.platform
+        })
+      });
+      payload = await response.json();
+      if (!response.ok) {
+        const reason = payload.error || payload.errors?.[0]?.error || "未采集到详情图";
+        throw new Error(reason);
+      }
+    }
 
-    const payload = await response.json();
-    if (!response.ok || !payload.images || !payload.images.length) {
+    if (!payload.images || !payload.images.length) {
       const reason = payload.error || payload.errors?.[0]?.error || "未采集到详情图";
       throw new Error(reason);
     }
 
-    state.detailImages = payload.images;
-    renderImageList(root);
-    setText(root, "[data-pa-image-state]", `${payload.images.length} 张`);
+    const evidencePayload = payload.imagesBySource
+      ? payload
+      : decorateEvidencePayload({ ...payload, sourceKey: payload.sourceKey || sourceFromValue(payload.platform || form.platform, "web") }, payload.sourceKey || "web");
+    applyImageEvidencePayload(root, evidencePayload);
     setText(root, "[data-pa-evidence-state]", "详情图已采集，等待价格证据");
     agentStatus(root, "详情图证据已采集。");
-    crawlStatus(root, `已采集 ${payload.images.length} 张详情图，可交给视觉模型分析。`);
+    crawlStatus(root, `已采集 ${state.detailImages.length} 张详情图，可交给视觉模型分析。`);
   }
 
   function hasValue(root, name) {
@@ -652,16 +1285,51 @@
     if (input) input.value = value;
   }
 
-  async function runReviewAgent(root) {
-    const hasOfficialUrl = hasValue(root, "officialUrl");
+  async function runRpaDemo(root) {
+    setField(root, "platform", "auto");
+    setField(root, "officialUrl", "");
+    setField(root, "officialPrice", "");
+    setField(root, "dailyPrice", "");
+    setField(root, "promoPrice", "");
+    setField(root, "lowestDealPrice", "");
+    if (!hasValue(root, "lowPrice")) setField(root, "lowPrice", "14.2");
+    if (!hasValue(root, "bomLow")) setField(root, "bomLow", "19");
+    if (!hasValue(root, "bomHigh")) setField(root, "bomHigh", "21");
+    state.lastOfficialPrice = null;
+    state.lastRpaResult = null;
+    state.detailImages = [];
+    state.rpaEvidenceImages = emptyEvidenceImages();
+    renderRpaEvidence(root);
+    renderImageList(root);
+    setText(root, "[data-pa-image-state]", "待采集");
+    setText(root, "[data-pa-brief-official]", "待补");
+    updateRpaConsole(root, {
+      status: "selected",
+      platform: "all",
+      taskId: "",
+      mock: null,
+      attempt: 0,
+      price: null,
+      images: 0,
+      phaseText: "等待触发真实手机 RPA",
+      sourceStatus: { web: "waiting", douyin: "waiting", taobao: "waiting" }
+    });
+    setCommand(root, "帮我完整审核这单");
+    agentStatus(root, "已切换到全平台自动取证链路，开始完整审核。");
+    await runReviewAgent(root, { scrollResult: false });
+  }
+
+  async function runReviewAgent(root, options = {}) {
+    const form = readForm(root);
+    const hasEvidenceTrigger = true;
     agentStatus(root, "麦总开始执行完整审核。");
 
-    if (hasOfficialUrl && !hasValue(root, "officialPrice")) {
+    if (hasEvidenceTrigger && !hasValue(root, "officialPrice")) {
       agentStatus(root, "正在先查官旗到手价。");
       await crawlOfficialPrice(root);
     }
 
-    if (hasOfficialUrl && !state.detailImages.length) {
+    if (hasEvidenceTrigger && !state.detailImages.length) {
       try {
         agentStatus(root, "正在补详情图证据。");
         await crawlDetailImages(root);
@@ -679,7 +1347,9 @@
     refreshEvidenceStates(root);
     state.result = analyzer.analyze(readForm(root));
     renderResult(root, state.result);
-    root.querySelector("[data-pa-result-section]")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (options.scrollResult !== false) {
+      root.querySelector("[data-pa-result-section]")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
   }
 
   async function runAssistantCommand(root, rawCommand) {
@@ -761,11 +1431,31 @@
         return;
       }
 
+      if (action === "select-platform") {
+        const platform = button.dataset.paPlatform || "auto";
+        setField(root, "platform", platform);
+        updateRpaConsole(root, {
+          status: platform === "auto" ? "idle" : "selected",
+          platform,
+          taskId: "",
+          mock: null,
+          attempt: 0,
+          price: null,
+          images: 0,
+          phaseText: "等待触发真实手机 RPA"
+        });
+        agentStatus(root, platform === "auto" ? "已切换为网页官旗采集。" : `已切换为${platformLabel(platform)}采集。`);
+        return;
+      }
+
       if (action === "analyze") {
-        refreshEvidenceStates(root);
-        state.result = analyzer.analyze(readForm(root));
-        renderResult(root, state.result);
-        showToast("分析完成");
+        try {
+          await runReviewAgent(root, { scrollResult: false });
+          showToast("全平台取证审核完成");
+        } catch (error) {
+          agentStatus(root, `审核失败：${error.message}`);
+          showToast("审核失败");
+        }
         return;
       }
 
@@ -788,6 +1478,17 @@
         } catch (error) {
           agentStatus(root, `执行失败：${error.message}`);
           showToast("麦总执行失败");
+        }
+        return;
+      }
+
+      if (action === "rpa-demo") {
+        try {
+          await runRpaDemo(root);
+          showToast("RPA 完整审核已完成");
+        } catch (error) {
+          agentStatus(root, `RPA 演示失败：${error.message}`);
+          showToast("RPA 演示失败");
         }
         return;
       }
@@ -842,6 +1543,21 @@
           showToast("麦总执行失败");
         }
       }
+    });
+
+    root.addEventListener("change", (event) => {
+      if (!event.target.matches('[data-pa-field="platform"]')) return;
+      const platform = event.target.value || "auto";
+      updateRpaConsole(root, {
+        status: platform === "auto" ? "idle" : "selected",
+        platform,
+        taskId: "",
+        mock: null,
+        attempt: 0,
+        price: null,
+        images: 0,
+        phaseText: "等待触发真实手机 RPA"
+      });
     });
   }
 
