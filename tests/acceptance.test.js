@@ -132,6 +132,35 @@ async function runAnalyzerTests() {
   assert.equal(Number(result.suggestedPurchasePrice.toFixed(2)), 20.57, "should calculate suggested purchase price");
   assert.equal(result.scenarios[2].status, "亏损", "lowest deal scenario should be loss-making");
   assertIncludes(result.reviewText, "建议驳回", "review text should include recommendation");
+
+  const freightResult = analyzer.analyze({
+    ...extracted,
+    officialPrice: 27.99,
+    lowPrice: 14.2,
+    bomLow: 19,
+    bomHigh: 21,
+    controllableRate: 12,
+    uncontrollableRate: 2.5,
+    adRate: 0,
+    targetProfitRate: 12,
+    packageWeightKg: 1.1,
+    packageLengthCm: 24,
+    packageWidthCm: 18,
+    packageHeightCm: 10,
+    volumeDivisor: 8000,
+    firstWeightKg: 1,
+    firstFreightFee: 3.2,
+    continuedWeightKg: 0.5,
+    continuedFreightFee: 0.45,
+    evidenceImageCount: 7
+  });
+  assert.equal(Number(freightResult.suggestedPurchasePrice.toFixed(2)), 16.92, "freight template should lower suggested purchase price");
+  assert.equal(freightResult.logisticsCost, 3.65, "should include template freight cost");
+  assert.equal(freightResult.freight.billedWeight, 1.5, "should round chargeable weight by continued weight unit");
+  assert.equal(freightResult.freight.volumeWeight, 0.54, "should calculate volume weight with divisor");
+  assert.equal(freightResult.priceAdvice.bomConflict, true, "freight-aware purchase cap should flag BOM conflict");
+  assert.ok(freightResult.evidenceCompleteness >= 90, "full evidence should produce a high completeness score");
+  assertIncludes(freightResult.reviewText, "计费重运费", "review text should include freight basis");
 }
 
 async function runPriceExtractorTests(demoBaseUrl) {
@@ -211,6 +240,38 @@ async function runRpaApiTests(crawlerUrl) {
   assert.equal(directResponse.status, 202, "official-price should expose async RPA task for RPA platforms");
   const directPayload = await directResponse.json();
   assert.ok(directPayload.taskId, "official-price RPA branch should return taskId");
+
+  const aiResponse = await fetch(`${crawlerUrl}/api/ai/review-draft`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      result: {
+        recommendation: "建议驳回或要求品牌降采后重新提报。",
+        riskLevel: "高",
+        riskScore: 120,
+        suggestedPurchasePrice: 16.92,
+        logisticsCost: 3.65,
+        feeRate: 0.145,
+        targetRate: 0.12,
+        input: {
+          productName: "喜崽鲜泥混合价猫餐盒 1kg",
+          purchasePrice: 30,
+          officialPrice: 27.99
+        },
+        priceAdvice: {
+          purchaseLower: 15.99,
+          purchaseUpper: 16.92
+        },
+        actionItems: ["要求品牌降采至 16.92 元以内。"],
+        strengths: ["已按计费重扣减运费。"]
+      }
+    })
+  });
+  assert.equal(aiResponse.status, 200, "AI review proxy should respond");
+  const aiPayload = await aiResponse.json();
+  assert.equal(aiPayload.ok, true, "AI review proxy should return ok");
+  assert.equal(aiPayload.provider, "local-rules", "AI review proxy should use local fallback without API key");
+  assertIncludes(aiPayload.draft, "Boss 审批意见", "AI review draft should be usable for Boss review");
 }
 
 async function runBrowserTests() {
@@ -220,7 +281,9 @@ async function runBrowserTests() {
     YINGDAO_ACCESS_KEY_ID: process.env.YINGDAO_ACCESS_KEY_ID,
     YINGDAO_ACCESS_KEY_SECRET: process.env.YINGDAO_ACCESS_KEY_SECRET,
     YINGDAO_PRICE_ROBOT_UUID: process.env.YINGDAO_PRICE_ROBOT_UUID,
-    YINGDAO_ACCOUNT_NAME: process.env.YINGDAO_ACCOUNT_NAME
+    YINGDAO_ACCOUNT_NAME: process.env.YINGDAO_ACCOUNT_NAME,
+    ZZZ_API_KEY: process.env.ZZZ_API_KEY,
+    ZHIZENGZENG_API_KEY: process.env.ZHIZENGZENG_API_KEY
   };
   process.env.RPA_MOCK_DELAY_MS = "900";
   process.env.RPA_NEXT_POLL_MS = "300";
@@ -228,6 +291,8 @@ async function runBrowserTests() {
   process.env.YINGDAO_ACCESS_KEY_SECRET = "";
   process.env.YINGDAO_PRICE_ROBOT_UUID = "";
   process.env.YINGDAO_ACCOUNT_NAME = "";
+  process.env.ZZZ_API_KEY = "";
+  process.env.ZHIZENGZENG_API_KEY = "";
 
   const { server, url } = await startServer(workspace);
   const crawler = await listen(createCrawlerServer());
@@ -264,6 +329,14 @@ async function runBrowserTests() {
     await assertLayoutShift(page);
     await page.locator("[data-pa-pickup-card]", { hasText: "已拾取" }).waitFor();
     await page.locator("[data-pa-rpa-console]", { hasText: "跨平台证据采集" }).waitFor();
+    assertIncludes(await page.locator(".pa-tabs").innerText(), "证据", "assistant should expose workspace tabs");
+    await page.locator('[data-pa-action="switch-panel"][data-pa-panel-target="calculator"]').click();
+    assert.equal(
+      await page.locator('[data-pa-field="packageWeightKg"]').isVisible(),
+      true,
+      "calculator tab should show freight template fields"
+    );
+    await page.locator('[data-pa-action="switch-panel"][data-pa-panel-target="evidence"]').click();
     assertIncludes(await page.locator("[data-pa-rpa-console]").innerText(), "网页官旗", "RPA console should show web and RPA collection sources");
     assert.equal(
       await page.evaluate(() => document.body.innerText.includes("价格爬取服务") || document.body.innerText.includes("详情图采集服务")),
@@ -292,13 +365,17 @@ async function runBrowserTests() {
     await page.locator('[data-pa-risk]', { hasText: "高风险" }).waitFor();
     const resultText = await page.locator("[data-pa-result]").innerText();
     assertIncludes(resultText, "建议驳回", "result should show reject or reduce cost recommendation");
-    assertIncludes(resultText, "20.57 元", "result should show calculated suggested purchase price");
+    assertIncludes(resultText, "16.92 元", "result should show freight-template suggested purchase price");
+    assertIncludes(resultText, "计费重运费", "result should show freight basis");
+    assertIncludes(resultText, "证据完整度", "result should show evidence completeness");
     assertIncludes(resultText, "最低凑单场景", "result should show scenario table");
 
     await page.locator('[data-pa-action="copy"]').click();
     const copied = await page.evaluate(() => window.__purchaseAssistantCopiedText);
     assertIncludes(copied, "审核建议", "copy should include review heading");
-    assertIncludes(copied, "建议采购价：20.57 元", "copy should include suggested purchase price");
+    assertIncludes(copied, "建议采购价：16.92 元", "copy should include freight-template suggested purchase price");
+    assertIncludes(copied, "计费重运费：3.65 元", "copy should include freight cost");
+    assertIncludes(copied, "计费重：1.5kg", "copy should include billed freight weight");
 
     const commandPage = await browser.newPage();
     await commandPage.goto(url, { waitUntil: "domcontentloaded" });
@@ -321,10 +398,10 @@ async function runBrowserTests() {
     await commandPage.waitForFunction(() => document.querySelector('[data-pa-field="officialPrice"]')?.value === "27.99");
     const commandResultText = await commandPage.locator("[data-pa-result]").innerText();
     assertIncludes(commandResultText, "建议驳回", "natural language command should generate review result");
-    assertIncludes(commandResultText, "20.57 元", "natural language command should calculate suggested purchase price");
+    assertIncludes(commandResultText, "16.92 元", "natural language command should calculate freight-template suggested purchase price");
     const decisionSummary = await commandPage.locator("[data-pa-decision-summary]").innerText();
     assertIncludes(decisionSummary, "建议驳回", "agent should show an immediate decision summary");
-    assertIncludes(decisionSummary, "20.57 元", "decision summary should show suggested purchase price");
+    assertIncludes(decisionSummary, "16.92 元", "decision summary should show freight-template suggested purchase price");
     assertIncludes(await commandPage.locator("[data-pa-command-log]").innerText(), "高风险", "agent command log should show final risk");
     assertIncludes(await commandPage.locator("[data-pa-image-state]").innerText(), "7 张", "agent command should collect per-platform image evidence");
     const commandEvidenceText = await commandPage.locator("[data-pa-rpa-evidence]").innerText();

@@ -7,3 +7,5 @@ yarn-error.log*
 pnpm-debug.log*
 .env
 .env.*
+output/
+docs/blackhorse-contest-submission.md

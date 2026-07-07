@@ -35,6 +35,7 @@
   const DETAIL_IMAGE_PATH = "/api/detail-images";
   const RPA_PRICE_START_PATH = "/api/rpa/price/start";
   const RPA_PRICE_RESULT_PATH = "/api/rpa/price/result";
+  const AI_REVIEW_PATH = "/api/ai/review-draft";
   const PICKUP_FIELDS = [
     ["productName", "商品名"],
     ["skuId", "商品编码"],
@@ -97,8 +98,8 @@
             </div>
             <div>
               <p class="pa-kicker">麦总 AI 审核助理</p>
-              <h2 class="pa-title">新品价格风控助手</h2>
-              <p class="pa-subtitle">我会读取审批单，触发跨平台 RPA 取证，并给出可复制的审核意见。</p>
+              <h2 class="pa-title">新品价格 AI 风控</h2>
+              <p class="pa-subtitle">读单、取证、算运费、出意见，一键完成。</p>
             </div>
           </div>
           <button class="pa-close" data-pa-action="close" title="关闭">×</button>
@@ -111,10 +112,10 @@
               </div>
               <div class="pa-hero-copy">
                 <div class="pa-status-row">
-                  <h3 class="pa-hero-title">麦总正在审核这张新品单</h3>
+                  <h3 class="pa-hero-title">AI 正在审核这张新品单</h3>
                   <span class="pa-pill" data-pa-completeness>未识别</span>
                 </div>
-                <p class="pa-hero-summary" data-pa-assistant-summary>我会先读单，再补价格证据，最后给出可复制的审核意见。</p>
+                <p class="pa-hero-summary" data-pa-assistant-summary>我会先读单，再补价格证据，最后给出可复制的定价依据。</p>
                 <p class="pa-muted" data-pa-page-url>当前审批页已连接</p>
               </div>
             </div>
@@ -184,7 +185,7 @@
               <div class="pa-rpa-head">
                 <div>
                 <span>跨平台证据采集</span>
-                  <strong data-pa-rpa-title>网页官旗 / 手机抖音 / 手机淘宝自动取证</strong>
+                  <strong data-pa-rpa-title>全站价盘：网页官旗 / 手机抖音 / 手机淘宝自动取证</strong>
                 </div>
                 <span class="pa-rpa-badge" data-pa-rpa-mode>自动</span>
               </div>
@@ -245,11 +246,11 @@
               </div>
             </div>
             <div class="pa-command-grid">
-              <button data-pa-action="refresh">重新读单</button>
-              <button data-pa-action="crawl-detail-images">采集详情图</button>
-              <button data-pa-action="crawl-official-price">查询官旗价</button>
-              <button data-pa-action="rpa-demo">全平台取证审核</button>
               <button class="pa-primary" data-pa-action="analyze">全平台取证并生成意见</button>
+              <button data-pa-action="rpa-demo">全平台取证审核</button>
+              <button data-pa-action="crawl-official-price">查询官旗价</button>
+              <button data-pa-action="crawl-detail-images">采集详情图</button>
+              <button data-pa-action="refresh">重新读单</button>
             </div>
             <div class="pa-command-box">
               <div class="pa-command-input-row">
@@ -289,8 +290,15 @@
             </div>
           </section>
 
+          <nav class="pa-tabs" aria-label="审核工作区">
+            <button data-pa-action="switch-panel" data-pa-panel-target="decision">AI结论</button>
+            <button class="is-active" data-pa-action="switch-panel" data-pa-panel-target="evidence">证据</button>
+            <button data-pa-action="switch-panel" data-pa-panel-target="calculator">计算器</button>
+            <button data-pa-action="switch-panel" data-pa-panel-target="details">明细</button>
+          </nav>
+
           <div class="pa-chat">
-            <section class="pa-turn pa-turn-assistant">
+            <section class="pa-turn pa-turn-assistant" data-pa-panel="evidence">
               <div class="pa-message-avatar">
                 <img src="${assistantAvatarUrl}" alt="">
               </div>
@@ -300,7 +308,7 @@
               </div>
             </section>
 
-            <section class="pa-work-card pa-focus-card">
+            <section class="pa-work-card pa-focus-card" data-pa-panel="evidence">
               <div class="pa-card-head">
                 <h3 class="pa-section-title">证据槽</h3>
                 <span class="pa-section-hint">先补这里</span>
@@ -313,23 +321,24 @@
                 ${fieldHtml("bomHigh", "BOM 成本上沿", "number", false, "填写成本上沿")}
               </div>
               <div class="pa-mini-status-grid">
-                <div><span>官旗价</span><strong data-pa-price-state>待获取</strong></div>
+                <div><span>全站价盘</span><strong data-pa-price-state>待获取</strong></div>
                 <div><span>详情图</span><strong data-pa-image-state>待采集</strong></div>
                 <div><span>BOM</span><strong data-pa-bom-state>待补充</strong></div>
+                <div><span>运费</span><strong data-pa-logistics-state>待接入</strong></div>
               </div>
             </section>
 
-            <section class="pa-turn pa-turn-assistant">
+            <section class="pa-turn pa-turn-assistant" data-pa-panel="calculator">
               <div class="pa-message-avatar">
                 <img src="${assistantAvatarUrl}" alt="">
               </div>
               <div class="pa-message-bubble">
                 <h3 class="pa-section-title">我会按这套口径测算</h3>
-                <p class="pa-muted">默认采用可控费率 12%、不可控费率 2.5%、目标贡利率 12%。你可以按业务口径覆盖。</p>
+                <p class="pa-muted">默认采用可控费率 12%、不可控费率 2.5%、目标贡利率 12%，运费按实重和体积重取大后套首重/续重模板。你可以按运费系统口径覆盖。</p>
               </div>
             </section>
 
-            <section class="pa-work-card">
+            <section class="pa-work-card" data-pa-panel="calculator">
               <div class="pa-card-head">
                 <h3 class="pa-section-title">测算口径</h3>
                 <span class="pa-section-hint">费用率和促销场景</span>
@@ -339,13 +348,25 @@
                 ${fieldHtml("uncontrollableRate", "不可控费率 %", "number")}
                 ${fieldHtml("adRate", "自投广告 %", "number")}
                 ${fieldHtml("targetProfitRate", "目标贡利率 %", "number")}
+                ${fieldHtml("packageWeightKg", "包裹实重 kg", "number")}
+                ${fieldHtml("packageLengthCm", "长 cm", "number")}
+                ${fieldHtml("packageWidthCm", "宽 cm", "number")}
+                ${fieldHtml("packageHeightCm", "高 cm", "number")}
+                ${fieldHtml("volumeDivisor", "泡重系数", "number")}
+                ${fieldHtml("firstWeightKg", "首重 kg", "number")}
+                ${fieldHtml("firstFreightFee", "首重运费", "number")}
+                ${fieldHtml("continuedWeightKg", "续重单位 kg", "number")}
+                ${fieldHtml("continuedFreightFee", "续重运费", "number")}
+                ${fieldHtml("packagingCost", "包材/附加费", "number")}
+                ${fieldHtml("freightSurcharge", "偏远/冷链加收", "number")}
+                ${fieldHtml("shippingSubsidy", "运费补贴/件", "number")}
                 ${fieldHtml("dailyPrice", "日销件单价", "number")}
                 ${fieldHtml("promoPrice", "大促件单价", "number")}
                 ${fieldHtml("lowestDealPrice", "最低凑单价", "number", true)}
               </div>
             </section>
 
-            <section class="pa-turn pa-turn-assistant" data-pa-result-section>
+            <section class="pa-turn pa-turn-assistant" data-pa-result-section data-pa-panel="decision">
               <div class="pa-message-avatar">
                 <img src="${assistantAvatarUrl}" alt="">
               </div>
@@ -357,13 +378,13 @@
                 <div data-pa-result>
                   <div class="pa-empty-result">
                     <div class="pa-empty-dot"></div>
-                    <p>点击“全平台取证并生成意见”后，我会先并发采集网页官旗、抖音和淘宝证据，再输出审核结论。</p>
+                    <p>点击“全平台取证并生成意见”后，我会用公式、AI 分析和证据链说明为什么建议通过、降采或驳回。</p>
                   </div>
                 </div>
               </div>
             </section>
 
-            <section class="pa-work-card pa-detail-card">
+            <section class="pa-work-card pa-detail-card" data-pa-panel="details">
               <div class="pa-card-head">
                 <h3 class="pa-section-title">数据明细</h3>
                 <span class="pa-section-hint">必要时再改</span>
@@ -380,6 +401,7 @@
               </div>
               <input data-pa-field="crawlerEndpoint" type="hidden">
               <input data-pa-field="detailImageEndpoint" type="hidden">
+              <input data-pa-field="evidenceImageCount" type="hidden">
               <input data-pa-field="platform" type="hidden" value="auto">
               <div data-pa-image-list></div>
             </section>
@@ -388,6 +410,7 @@
       </aside>
     `;
     document.body.appendChild(root);
+    setActivePanel(root, "evidence");
     bindEvents(root);
     return root;
   }
@@ -405,6 +428,18 @@
   function setText(root, selector, value) {
     const node = root.querySelector(selector);
     if (node) node.textContent = value;
+  }
+
+  function setActivePanel(root, panel) {
+    const nextPanel = panel || "evidence";
+    root.dataset.activePanel = nextPanel;
+    root.querySelectorAll("[data-pa-panel-target]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.paPanelTarget === nextPanel);
+    });
+  }
+
+  function setResultMode(root, enabled) {
+    root.classList.toggle("pa-has-result", Boolean(enabled));
   }
 
   function agentStatus(root, message) {
@@ -437,6 +472,11 @@
   function rpaEndpoint(form, path) {
     const origin = serviceOrigin(form);
     return origin ? `${origin}${path}` : "";
+  }
+
+  function aiEndpoint(form) {
+    const origin = serviceOrigin(form);
+    return origin ? `${origin}${AI_REVIEW_PATH}` : "";
   }
 
   function shouldUseRpa(form) {
@@ -781,6 +821,19 @@
     setField(root, "uncontrollableRate", "2.5");
     setField(root, "adRate", "0");
     setField(root, "targetProfitRate", "12");
+    setField(root, "packageWeightKg", "1.1");
+    setField(root, "packageLengthCm", "24");
+    setField(root, "packageWidthCm", "18");
+    setField(root, "packageHeightCm", "10");
+    setField(root, "volumeDivisor", "8000");
+    setField(root, "firstWeightKg", "1");
+    setField(root, "firstFreightFee", "3.2");
+    setField(root, "continuedWeightKg", "0.5");
+    setField(root, "continuedFreightFee", "0.45");
+    setField(root, "packagingCost", "0");
+    setField(root, "freightSurcharge", "0");
+    setField(root, "shippingSubsidy", "0");
+    setField(root, "evidenceImageCount", String(state.detailImages.length));
     if (!getField(root, "platform").value) setField(root, "platform", "auto");
     if (!getField(root, "crawlerEndpoint").value) {
       setField(root, "crawlerEndpoint", defaultServiceEndpoint(OFFICIAL_PRICE_PATH));
@@ -793,7 +846,7 @@
     root.querySelector("[data-pa-page-url]").textContent = "当前审批页已连接";
     setText(root, "[data-pa-brief-purchase]", formatMoney(data.purchasePrice));
     setText(root, "[data-pa-brief-jd]", formatMoney(data.jdPrice));
-    setText(root, "[data-pa-assistant-summary]", `已识别 ${data.productName || "当前商品"}，我会重点检查采购价、官旗价和促销贡利风险。`);
+    setText(root, "[data-pa-assistant-summary]", `已识别 ${data.productName || "当前商品"}，我会重点检查采购价、全站价盘、运费和促销贡利风险。`);
     agentStatus(root, "读单完成，下一步补价格证据。");
     setText(root, "[data-pa-read-state]", `完整度 ${data.completeness}%`);
     renderPickup(root, data);
@@ -806,11 +859,19 @@
     return "pa-pill pa-risk-low";
   }
 
+  function toneClass(tone) {
+    if (tone === "danger") return "is-danger";
+    if (tone === "warn") return "is-warn";
+    return "is-good";
+  }
+
   function renderResult(root, result) {
+    setResultMode(root, true);
+    setActivePanel(root, "decision");
     const risk = root.querySelector("[data-pa-risk]");
     risk.className = riskClass(result.riskLevel);
     risk.textContent = `${result.riskLevel}风险`;
-    setText(root, "[data-pa-assistant-summary]", `审核完成：${result.riskLevel}风险，建议采购价 ${formatMoney(result.suggestedPurchasePrice)}。`);
+    setText(root, "[data-pa-assistant-summary]", `审核完成：${result.riskLevel}风险，含运费建议采购价 ${formatMoney(result.suggestedPurchasePrice)}。`);
     agentStatus(root, `审核完成，结论为${result.riskLevel}风险。`);
     setText(root, "[data-pa-result-state]", `${result.riskLevel}风险 / ${formatMoney(result.suggestedPurchasePrice)}`);
     const decisionSummary = root.querySelector("[data-pa-decision-summary]");
@@ -820,46 +881,145 @@
     setText(root, "[data-pa-decision-price]", formatMoney(result.suggestedPurchasePrice));
     setText(root, "[data-pa-decision-score]", String(result.riskScore));
 
-    const scenarioRows = result.scenarios
+    const priceAdvice = result.priceAdvice || {};
+    const purchaseRange = `${formatMoney(priceAdvice.purchaseLower)}-${formatMoney(priceAdvice.purchaseUpper)}`;
+    const dealRange = `${formatMoney(priceAdvice.dealRangeLow)}-${formatMoney(priceAdvice.dealRangeHigh)}`;
+    const scenarios = result.scenarios || [];
+    const dailyScenario = scenarios.find((item) => item.name === "日销场景") || scenarios[0] || {};
+    const promoScenario = scenarios.find((item) => item.name === "大促场景") || scenarios[1] || {};
+    const lowestScenario = scenarios.find((item) => item.name === "最低凑单场景") || scenarios[2] || {};
+    const anchorDealPrice = result.input?.officialPrice || dailyScenario.price || result.input?.jdPrice;
+    const feeAmount = anchorDealPrice === null || anchorDealPrice === undefined ? null : anchorDealPrice * (result.feeRate || 0);
+    const formulaRate = dailyScenario.contributionRate === null || dailyScenario.contributionRate === undefined ? null : dailyScenario.contributionRate * 100;
+    const formulaTone = formulaRate === null ? "" : formulaRate < 0 ? "is-danger" : formulaRate < (result.targetRate || 0) * 100 ? "is-warn" : "is-good";
+    const priceAnalysis =
+      result.reasons?.[0] ||
+      `当前采购价 ${formatMoney(result.input?.purchasePrice)}，含运费建议采购价上限 ${formatMoney(result.suggestedPurchasePrice)}。`;
+    const profitAnalysis =
+      result.reasons?.find((reason) => reason.includes("运费") || reason.includes("最低凑单")) ||
+      `最低凑单场景为${lowestScenario.status || "待测算"}，需结合促销资源确认最终利润。`;
+    const chainItems = (result.evidenceChain || [])
+      .map(
+        (item) => `
+          <div class="pa-chain-item ${toneClass(item.tone)}">
+            <span>${escapeHtml(item.label)}</span>
+            <strong>${escapeHtml(item.verdict)}</strong>
+            <small>${escapeHtml(item.suggestion)}</small>
+          </div>
+        `
+      )
+      .join("");
+    const strengths = (result.strengths || [])
+      .map((item) => `<li>${escapeHtml(item)}</li>`)
+      .join("");
+    const actionItems = (result.actionItems || [])
+      .map((item) => `<li>${escapeHtml(item)}</li>`)
+      .join("");
+    const scenarioRows = scenarios
       .map(
         (item) => `
           <tr>
-            <td>${item.name}</td>
+            <td>${escapeHtml(item.name)}</td>
             <td>${formatMoney(item.price)}</td>
             <td>${formatPercent(item.contributionRate === null ? null : item.contributionRate * 100)}</td>
             <td>${formatMoney(item.contributionAmount)}</td>
-            <td>${item.status}</td>
+            <td><span class="pa-status-chip ${toneClass(item.status === "亏损" ? "danger" : item.status === "低于目标" ? "warn" : "good")}">${escapeHtml(item.status)}</span></td>
           </tr>
         `
       )
       .join("");
 
     root.querySelector("[data-pa-result]").innerHTML = `
-      <div class="pa-answer">
-        <p class="pa-answer-label">我的判断</p>
-        <p class="pa-result-title">${result.recommendation}</p>
+      <div class="pa-ai-verdict ${toneClass(result.riskLevel === "高" ? "danger" : result.riskLevel === "中" ? "warn" : "good")}">
+        <div>
+          <p class="pa-answer-label">AI 判断</p>
+          <p class="pa-result-title">${escapeHtml(result.recommendation)}</p>
+        </div>
+        <span>${escapeHtml(result.riskLevel)}风险</span>
+      </div>
+      <div class="pa-formula-card ${formulaTone}">
+        <div class="pa-formula-head">
+          <span>定价分析</span>
+          <strong>利润计算器</strong>
+        </div>
+        <div class="pa-formula-main">
+          <div class="pa-formula-result">
+            <span>预估前台贡利率</span>
+            <strong>${formatPercent(formulaRate)}</strong>
+          </div>
+          <div class="pa-formula-equation">
+            <div><span>到手价</span><strong>${formatMoney(anchorDealPrice)}</strong></div>
+            <em>-</em>
+            <div><span>采购价</span><strong>${formatMoney(result.input?.purchasePrice)}</strong></div>
+            <em>-</em>
+            <div><span>平台费用</span><strong>${formatMoney(feeAmount)}</strong></div>
+            <em>-</em>
+            <div><span>计费重运费</span><strong>${formatMoney(result.logisticsCost)}</strong></div>
+          </div>
+        </div>
+        <p class="pa-formula-foot">按费用率、目标贡利率和重量体积运费反推，建议采购价不高于 <strong>${formatMoney(result.suggestedPurchasePrice)}</strong>。</p>
+      </div>
+      <div class="pa-ai-analysis-grid">
+        <div class="pa-ai-analysis-card">
+          <p class="pa-ai-tag">AI 分析</p>
+          <p>${escapeHtml(priceAnalysis)}</p>
+          <div class="pa-ai-highlight">
+            <span>建议采购价</span>
+            <strong>${formatMoney(result.suggestedPurchasePrice)}</strong>
+          </div>
+        </div>
+        <div class="pa-ai-analysis-card">
+          <p class="pa-ai-tag">AI 分析</p>
+          <p>${escapeHtml(profitAnalysis)}</p>
+          <div class="pa-ai-highlight">
+            <span>最低凑单</span>
+            <strong>${escapeHtml(lowestScenario.status || "待测算")}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="pa-range-card ${priceAdvice.bomConflict ? "is-danger" : ""}">
+        <div>
+          <span>采购价建议范围</span>
+          <strong>${purchaseRange}</strong>
+        </div>
+        <div>
+          <span>到手价建议区间</span>
+          <strong>${dealRange}</strong>
+        </div>
+        <p>${escapeHtml(priceAdvice.message || "等待完整价格和运费口径。")}</p>
       </div>
       <div class="pa-metric-grid">
         <div class="pa-metric">
-          <p class="pa-metric-label">建议采购价</p>
-          <p class="pa-metric-value">${formatMoney(result.suggestedPurchasePrice)}</p>
+          <p class="pa-metric-label">证据完整度</p>
+          <p class="pa-metric-value">${result.evidenceCompleteness || 0}%</p>
         </div>
         <div class="pa-metric">
           <p class="pa-metric-label">采用费用率</p>
           <p class="pa-metric-value">${formatPercent(result.feeRate * 100)}</p>
         </div>
         <div class="pa-metric">
-          <p class="pa-metric-label">目标贡利率</p>
-          <p class="pa-metric-value">${formatPercent(result.targetRate * 100)}</p>
+          <p class="pa-metric-label">大促场景</p>
+          <p class="pa-metric-value">${escapeHtml(promoScenario.status || "待测算")}</p>
         </div>
         <div class="pa-metric">
           <p class="pa-metric-label">风险分</p>
           <p class="pa-metric-value">${result.riskScore}</p>
         </div>
       </div>
+      <div class="pa-chain-grid">${chainItems}</div>
+      <div class="pa-two-column">
+        <div class="pa-reason-card pa-good-card">
+          <p class="pa-answer-label">做得好的地方</p>
+          <ul class="pa-reasons">${strengths}</ul>
+        </div>
+        <div class="pa-reason-card pa-action-card">
+          <p class="pa-answer-label">需要改正/补充</p>
+          <ol class="pa-reasons">${actionItems}</ol>
+        </div>
+      </div>
       <div class="pa-reason-card">
         <p class="pa-answer-label">关键理由</p>
-        <ol class="pa-reasons">${result.reasons.map((reason) => `<li>${reason}</li>`).join("")}</ol>
+        <ol class="pa-reasons">${result.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}</ol>
       </div>
       <table class="pa-table">
         <thead>
@@ -873,11 +1033,48 @@
         </thead>
         <tbody>${scenarioRows}</tbody>
       </table>
+      <div class="pa-model-draft" data-pa-model-draft hidden></div>
       <div class="pa-actions pa-result-actions">
         <button class="pa-copy" data-pa-action="copy">复制审核意见</button>
         <button data-pa-action="copy-evidence">复制证据摘要</button>
+        <button data-pa-action="model-review">智增增生成 Boss 版意见</button>
       </div>
     `;
+  }
+
+  async function generateModelReview(root) {
+    if (!state.result) throw new Error("请先完成审核测算。");
+    const form = readForm(root);
+    const endpoint = aiEndpoint(form);
+    if (!endpoint) throw new Error("AI 生成服务未连接，请先启动价格采集服务。");
+    const draftNode = root.querySelector("[data-pa-model-draft]");
+    if (draftNode) {
+      draftNode.hidden = false;
+      draftNode.innerHTML = `<p class="pa-muted">正在调用智增增生成 Boss 版意见...</p>`;
+    }
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        result: state.result,
+        evidenceText: evidenceText(state.result),
+        imageEvidenceText: imageEvidenceText()
+      })
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) throw new Error(payload.error || "AI 意见生成失败");
+    if (draftNode) {
+      draftNode.hidden = false;
+      draftNode.innerHTML = `
+        <div class="pa-model-head">
+          <span>${payload.provider === "zhizengzeng" ? "智增增" : "本地规则"}</span>
+          <strong>${payload.configured ? "已接入模型" : "未配置密钥，使用本地兜底"}</strong>
+        </div>
+        <pre>${escapeHtml(payload.draft || "")}</pre>
+      `;
+    }
+    await copyText(payload.draft || "");
+    showToast("Boss 版意见已生成并复制");
   }
 
   function evidenceText(result) {
@@ -898,9 +1095,16 @@
       `全网低价：${formatMoney(result.input.lowPrice)}`,
       `详情图数量：${state.detailImages.length}`,
       `BOM 参考：${formatMoney(result.input.bomLow)}-${formatMoney(result.input.bomHigh)}`,
+      `计费重运费：${formatMoney(result.logisticsCost)}`,
+      `计费重：${result.freight?.billedWeight || "-"}kg，实重：${result.freight?.actualWeight || "-"}kg，体积重：${result.freight?.volumeWeight || "-"}kg`,
       `建议采购价：${formatMoney(result.suggestedPurchasePrice)}`,
+      `建议采购区间：${formatMoney(result.priceAdvice?.purchaseLower)}-${formatMoney(result.priceAdvice?.purchaseUpper)}`,
+      `证据完整度：${result.evidenceCompleteness || 0}%`,
       ...officialEvidence,
-      `结论：${result.recommendation}`
+      `结论：${result.recommendation}`,
+      "",
+      "分环节建议：",
+      ...(result.actionItems || []).map((item, index) => `${index + 1}. ${item}`)
     ].join("\n");
   }
 
@@ -1129,6 +1333,7 @@
     const groups = evidenceImagesFromPayload(payload);
     state.rpaEvidenceImages = groups;
     state.detailImages = flattenEvidenceImages(groups);
+    setField(root, "evidenceImageCount", String(state.detailImages.length));
     renderRpaEvidence(root);
     renderImageList(root);
     setText(root, "[data-pa-image-state]", state.detailImages.length ? `${state.detailImages.length} 张` : "待采集");
@@ -1277,7 +1482,9 @@
 
   function refreshEvidenceStates(root) {
     const hasBom = hasValue(root, "bomLow") && hasValue(root, "bomHigh");
+    const logisticsCost = analyzer.calculateFreight(readForm(root)).totalCost;
     setText(root, "[data-pa-bom-state]", hasBom ? "已补充" : "待补充");
+    setText(root, "[data-pa-logistics-state]", logisticsCost > 0 ? formatMoney(logisticsCost) : "待接入");
   }
 
   function setCommand(root, value) {
@@ -1286,6 +1493,7 @@
   }
 
   async function runRpaDemo(root) {
+    setResultMode(root, false);
     setField(root, "platform", "auto");
     setField(root, "officialUrl", "");
     setField(root, "officialPrice", "");
@@ -1299,6 +1507,7 @@
     state.lastRpaResult = null;
     state.detailImages = [];
     state.rpaEvidenceImages = emptyEvidenceImages();
+    setField(root, "evidenceImageCount", "0");
     renderRpaEvidence(root);
     renderImageList(root);
     setText(root, "[data-pa-image-state]", "待采集");
@@ -1316,7 +1525,7 @@
     });
     setCommand(root, "帮我完整审核这单");
     agentStatus(root, "已切换到全平台自动取证链路，开始完整审核。");
-    await runReviewAgent(root, { scrollResult: false });
+    await runReviewAgent(root);
   }
 
   async function runReviewAgent(root, options = {}) {
@@ -1345,10 +1554,11 @@
     }
 
     refreshEvidenceStates(root);
+    setField(root, "evidenceImageCount", String(state.detailImages.length));
     state.result = analyzer.analyze(readForm(root));
     renderResult(root, state.result);
     if (options.scrollResult !== false) {
-      root.querySelector("[data-pa-result-section]")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      root.querySelector("[data-pa-result-section]")?.scrollIntoView({ block: "start", behavior: "smooth" });
     }
   }
 
@@ -1425,8 +1635,14 @@
         return;
       }
 
+      if (action === "switch-panel") {
+        setActivePanel(root, button.dataset.paPanelTarget || "evidence");
+        return;
+      }
+
       if (action === "refresh") {
         fillFromPage(root);
+        setActivePanel(root, "evidence");
         showToast("已重新读取当前页面");
         return;
       }
@@ -1495,6 +1711,7 @@
 
       if (action === "crawl-official-price") {
         try {
+          setActivePanel(root, "evidence");
           await crawlOfficialPrice(root);
           showToast("官旗价已获取");
         } catch (error) {
@@ -1506,6 +1723,7 @@
 
       if (action === "crawl-detail-images") {
         try {
+          setActivePanel(root, "evidence");
           await crawlDetailImages(root);
           showToast("详情图已采集");
         } catch (error) {
@@ -1530,6 +1748,16 @@
       if (action === "copy-evidence" && state.result) {
         await copyText(evidenceText(state.result));
         showToast("证据摘要已复制");
+        return;
+      }
+
+      if (action === "model-review") {
+        try {
+          await generateModelReview(root);
+        } catch (error) {
+          agentStatus(root, `AI 生成失败：${error.message}`);
+          showToast("AI 生成失败");
+        }
       }
     });
 

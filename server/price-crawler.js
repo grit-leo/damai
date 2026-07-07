@@ -1,4 +1,5 @@
 const http = require("node:http");
+const { generateReviewDraft } = require("./ai-client");
 const { parseOfficialPrice } = require("./price-extractor");
 const { extractDetailImages } = require("./detail-image-extractor");
 const { completeRpaTask, getRpaTaskResult, shouldUseRpa, startRpaTask } = require("./rpa-client");
@@ -194,6 +195,17 @@ function createCrawlerServer() {
         jsonResponse(res, statusCode, result);
       } catch (error) {
         jsonResponse(res, 500, { ok: false, error: error.message, status: "failed", candidates: [], images: [] });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/ai/review-draft") {
+      try {
+        const payload = await readBody(req);
+        const result = await generateReviewDraft(payload);
+        jsonResponse(res, 200, result);
+      } catch (error) {
+        jsonResponse(res, 500, { ok: false, error: error.message });
       }
       return;
     }
